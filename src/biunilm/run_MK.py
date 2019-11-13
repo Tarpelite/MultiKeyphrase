@@ -24,7 +24,7 @@ from pytorch_pretrained_bert.optimization import BertAdam, warmup_linear
 
 from nn.data_parallel import DataParallelImbalance
 import biunilm.seq2seq_loader as seq2seq_loader
-from utils_concat import ConcatDataset
+from utils_concat import ConcatDataset, TitleDataset, TitleLead1Dataset
 import torch.distributed as dist
 
 
@@ -214,6 +214,8 @@ def main():
                         help="Sharing segment embeddings for the encoder of S2S (used with --s2s_add_segment).")
     parser.add_argument('--pos_shift', action='store_true',
                         help="Using position shift for fine-tuning.")
+    parser.add_argument("--experiment", type=str, default="full",
+                        help="1.full (title + full abstract) 2.title (only title), 3.title-l1 (title + l1)")
 
     args = parser.parse_args()
 
@@ -270,6 +272,14 @@ def main():
     data_tokenizer = WhitespaceTokenizer() if args.tokenized_input else tokenizer
     if args.local_rank == 0:
         dist.barrier()
+    
+    DatasetFunc = ConcatDataset
+
+    if args.experiment == "title":
+        DatasetFunc = TitleDataset
+    elif args.experiment == "title-l1":
+        DatasetFunc = TitleLead1Dataset
+    
 
     if args.do_train:
         print("Loading Train Dataset", args.data_dir)
@@ -282,7 +292,7 @@ def main():
             args.data_dir, args.src_file if args.src_file else 'train.src')
         fn_tgt = os.path.join(
             args.data_dir, args.tgt_file if args.tgt_file else 'train.tgt')
-        train_dataset = ConcatDataset(
+        train_dataset = DatasetFunc(
             fn_src, fn_tgt, args.train_batch_size, data_tokenizer, args.max_seq_length, bi_uni_pipeline=bi_uni_pipeline)
         if args.local_rank == -1:
             train_sampler = RandomSampler(train_dataset, replacement=False)
