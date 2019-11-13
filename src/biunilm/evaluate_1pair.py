@@ -264,7 +264,7 @@ def main():
                         print("batch")
                         print(batch)
                         print(len(batch))
-                        batch = [t.to(device) for t in batch]
+                        batch = [t.to(device) for t in batch if t is not None]
                         input_ids, token_type_ids, position_ids, input_mask, task_idx = batch
                         traces = model(input_ids, token_type_ids,
                                     position_ids, input_mask, task_idx=task_idx)
