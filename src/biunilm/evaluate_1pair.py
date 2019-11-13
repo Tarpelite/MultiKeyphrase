@@ -362,7 +362,7 @@ def main():
                     if len(predict) > 0 and len(true_label) > 0:
                         acc_cul += acc_score(predict, true_label)
                         r_cul += recall_score(predict, true_label)
-                        f1_cul += f1_score(predict, true_label)
+                        f1_cul += f1_score(acc_score(predict, true_label), recall_score(predict, true_label))
                         cnt += 1
                     
                 results_dict["P@{}".format(k)] = acc_cul*1.000 / cnt
