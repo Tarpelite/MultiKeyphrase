@@ -235,9 +235,13 @@ def main():
                         load_func = load_title
                     elif args.experiment == "title-l1":
                         load_func = load_title_l1
+                
 
                 input_lines = [" ".join(load_func(json.loads(line))) for line in input_lines]
-            
+            # check 
+            print("Check input")
+            print(input_lines[0])
+            print(len(input_lines))
 
 
             data_tokenizer = WhitespaceTokenizer() if args.tokenized_input else tokenizer
