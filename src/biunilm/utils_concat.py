@@ -121,7 +121,8 @@ class ConcatDataset(Seq2SeqDataset):
         
         # if cached, load cache
         if self.cached:
-            self.ex_list = pickle.load("cached_dataset.pl")
+            with open("cached_dataset.pl", "rb") as f:
+                self.ex_list = pickle.load(f)
         else:
             # read the file into memory
             self.ex_list = []
@@ -136,7 +137,8 @@ class ConcatDataset(Seq2SeqDataset):
                         if len(src_tk) > 0 and len(tgt_tk) > 0:
                             self.ex_list.append((src_tk, tgt_tk))
             
-            pickle.dump(self.ex_list, "cached_dataset.pl")
+            with open("cached_dataset.pl", "wb") as f:
+                pickle.dump(self.ex_list, f)
 
         
         print('Load {0} documents'.format(len(self.ex_list)))
