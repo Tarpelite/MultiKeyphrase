@@ -341,7 +341,7 @@ def main():
                     true_label = true_label[:k]
                     if len(predict) > 0 and len(true_label) > 0:
                         acc_cul += acc_score(predict, true_label)
-                        r_cul += r_score(predict, true_label)
+                        r_cul += recall_score(predict, true_label)
                         f1_cul += f1_score(predict, true_label)
                         cnt += 1
                     
