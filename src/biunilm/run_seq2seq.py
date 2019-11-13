@@ -18,7 +18,8 @@ import torch
 from torch.utils.data import RandomSampler
 from torch.utils.data.distributed import DistributedSampler
 
-from pytorch_pretrained_bert.tokenization import BertTokenizer, WhitespaceTokenizer
+from transformers import BertTokenizer
+from pytorch_pretrained_bert.tokenization import WhitespaceTokenizer
 from pytorch_pretrained_bert.modeling import BertForPreTrainingLossMask
 from pytorch_pretrained_bert.optimization import BertAdam, warmup_linear
 

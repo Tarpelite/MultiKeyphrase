@@ -4,6 +4,7 @@ import copy
 
 from seq2seq_loader import Seq2SeqDataset
 # from transformers import BertTokenizer
+
 from tqdm import *
 
 class InputExample(object):
