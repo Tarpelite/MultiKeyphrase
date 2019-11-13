@@ -3,7 +3,7 @@ import sys
 import copy
 
 from seq2seq_loader import Seq2SeqDataset
-from transformers import BertTokenizer
+# from transformers import BertTokenizer
 from tqdm import *
 
 class InputExample(object):
@@ -106,7 +106,7 @@ class ConcatDataset(Seq2SeqDataset):
     
     def __init__(self, file_src, file_tgt, batch_size, tokenizer, max_len, short_sampling_prob=0.1, sent_reverse_order=False, bi_uni_pipeline=[]):
         super().__init__(file_src, file_tgt, batch_size, tokenizer, max_len)
-        self.tokenizer = BertTokenizer.from_pretrained("bert-large-cased")
+        self.tokenizer = tokenizer
         self.max_len = max_len
         self.short_sampling_prob = short_sampling_prob
         self.bi_uni_pipeline = bi_uni_pipeline
