@@ -29,7 +29,7 @@ import biunilm.long_loader as long_loader
 import biunilm.seq2seq_loader as seq2seq_loader
 
 from nltk.stem import Porterstemmer
-from nltk import word_tokenize
+from nltk import word_tokenize, sent_tokenize
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
@@ -145,6 +145,7 @@ def main():
     parser.add_argument('--do_predict', action='store_true', help="do_predict")
     parser.add_argument("--do_evaluate", action="store_true", help="caculate the scores if have label file")
     parser.add_argument("--label_file", type=str, default="")
+    parser.add_argument("--experiment", type=str, default="full", help="full/title/title-1pair")
 
 
     args = parser.parse_args()
@@ -220,7 +221,22 @@ def main():
             max_src_length = args.max_seq_length - 2 - args.max_tgt_length
 
             with open(args.input_file, encoding="utf-8") as fin:
-                input_lines = [x.strip() for x in fin.readlines()]
+                input_lines = []
+                for line in tqdm(fin.readlines()):
+                    line = line.strip().split("\t")
+                    def load_full(x):
+                        return x["title"] + " " + x["abstract"]
+                    def load_title(x):
+                        return x["title"] 
+                    def load_title_l1(x):
+                        return x["title"] + " " + sent_tokenize(x["abstract"])[0]
+                    if args.experiment == "full":
+                        load_func = load_full
+                    elif args.experiment == "title":
+                        load_func = load_title
+                    elif args.experiment == "title-l1":
+                        load_func = load_title_l1
+                input_lines = [" ".join(load_func(line)) for line in input_lines]
             data_tokenizer = WhitespaceTokenizer() if args.tokenized_input else tokenizer
             input_lines = [data_tokenizer.tokenize(
                 x)[:max_src_length] for x in input_lines]
