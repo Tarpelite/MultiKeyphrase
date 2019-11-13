@@ -259,7 +259,7 @@ def main():
                         for proc in bi_uni_pipeline:
                             instances.append(proc(instance))
                     with torch.no_grad():
-                        batch = batch_list_to_batch_tensors(
+                        batch = seq2seq_loader.batch_list_to_batch_tensors(
                             instances)
                         batch = [t.to(device) for t in batch]
                         input_ids, token_type_ids, position_ids, input_mask, task_idx = batch
