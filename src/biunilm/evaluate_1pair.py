@@ -27,7 +27,7 @@ from nn.data_parallel import DataParallelImbalance
 
 import biunilm.seq2seq_loader as seq2seq_loader
 
-from nltk.stem import Porterstemmer
+from nltk.stem import PorterStemmer
 from nltk import word_tokenize, sent_tokenize
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
@@ -36,7 +36,7 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
 logger = logging.getLogger(__name__)
 
 SPECIAL_TOKEN = ["[UNK]", "[PAD]", "[CLS]", "[MASK]"]
-stemmer = Porterstemmer()
+stemmer = PorterStemmer()
 
 def IsMatch(keyphrase1, keyphrase2):
     keyphrase1_stemmed = [stemmer.stem(x) for x in word_tokenize(keyphrase1)]
