@@ -23,7 +23,6 @@ from pytorch_pretrained_bert.tokenization import BertTokenizer, WhitespaceTokeni
 from pytorch_pretrained_bert.modeling import BertForSeq2SeqDecoder
 from pytorch_pretrained_bert.optimization import BertAdam, warmup_linear
 
-from biunilm.arg_parser import add_arg_lm_fine_tuning
 from nn.data_parallel import DataParallelImbalance
 import biunilm.long_loader as long_loader
 import biunilm.seq2seq_loader as seq2seq_loader
