@@ -7,6 +7,7 @@ import pickle
 # from transformers import BertTokenizer
 
 from tqdm import *
+import os
 
 class InputExample(object):
     """
@@ -149,7 +150,52 @@ class ConcatDataset(Seq2SeqDataset):
                 
 
 
+class TitleDataset(Seq2SeqDataset):
 
+    def __init__(self, file_src, file_tgt, batch_size, tokenizer, max_len, short_sampling_prob=0.1, sent_reverse_order=False, bi_uni_pipeline=[]):
+        super().__init__(file_src, file_tgt, batch_size, tokenizer, max_len)
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+        self.short_sampling_prob = short_sampling_prob
+        self.bi_uni_pipeline = bi_uni_pipeline
+        self.batch_size = batch_size
+        self.sent_reverse_order = sent_reverse_order
+
+        self.cached = False
+        if os.path.exists("cached_dataset.pl") :
+            self.cached = True
+        
+        # if cached, load cache
+        if self.cached:
+            with open("cached_dataset.pl", "rb") as f:
+                self.ex_list = pickle.load(f)
+        else:
+            # read the file into memory
+            self.ex_list = []
+            with open(file_src, "r", encoding="utf-8") as f_src, open(file_tgt, "r", encoding="utf-8") as f_tgt:
+                for src, tgt in zip(tqdm(f_src.readlines()), tqdm(f_tgt.readlines())):
+                    docs = [json.loads(x) for x in src.strip().strip("\n").split("\t")]
+                    docs = [x["title"]  for x in docs]
+                    keywords = tgt.strip().strip("\n").split("\t")
+                    src_tk = tokenizer.tokenize(" ".join(docs))
+                    for kk in keywords:
+                        tgt_tk = tokenizer.tokenize(kk)
+                        if len(src_tk) > 0 and len(tgt_tk) > 0:
+                            self.ex_list.append((src_tk, tgt_tk))
+            
+            with open("cached_dataset.pl", "wb") as f:
+                pickle.dump(self.ex_list, f)
 
         
+        print('Load {0} documents'.format(len(self.ex_list)))
+        # caculate statistics
+        src_tk_lens = [len(x[0]) for x in self.ex_list]
+        tgt_tk_lens = [len(x[1]) for x in self.ex_list]
+        print("Statistics:\nsrc_tokens: max:{0}  min:{1}  avg:{2}\ntgt_tokens: max:{3} min:{4} avg:{5}".format(max(src_tk_lens), min(src_tk_lens), sum(src_tk_lens)/len(self.ex_list), max(tgt_tk_lens), min(tgt_tk_lens), sum(tgt_tk_lens)/len(tgt_tk_lens)))
+
+
+class TitleLead1Dataset(Seq2SeqDataset):
+    pass
+
+
 
