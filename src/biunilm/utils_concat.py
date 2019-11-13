@@ -127,6 +127,10 @@ class ConcatDataset(Seq2SeqDataset):
                         self.ex_list.append((src_tk, tgt_tk))
         
         print('Load {0} documents'.format(len(self.ex_list)))
+        # caculate statistics
+        src_tk_lens = [len(x[0]) for x in self.ex_list]
+        tgt_tk_lens = [len(x[1]) for x in self.ex_list]
+        print("Statistics:\nsrc_tokens: max:{0}  min:{1}  avg:{2}\ntgt_tokens: max:{3} min:{4} avg:{5}".format(max(src_tk_lens), min(src_tk_lens), sum(src_tk_lens)/len(self.ex_list), max(tgt_tk_lens), min(tgt_tk_lens), sum(tgt_tk_lens)/len(tgt_tk_lens)))
                 
 
 
