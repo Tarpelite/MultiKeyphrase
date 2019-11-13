@@ -261,6 +261,9 @@ def main():
                     with torch.no_grad():
                         batch = seq2seq_loader.batch_list_to_batch_tensors(
                             instances)
+                        print("batch")
+                        print(batch)
+                        print(len(batch))
                         batch = [t.to(device) for t in batch]
                         input_ids, token_type_ids, position_ids, input_mask, task_idx = batch
                         traces = model(input_ids, token_type_ids,
