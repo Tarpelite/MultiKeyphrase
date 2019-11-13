@@ -3,6 +3,7 @@ import sys
 import copy
 
 from seq2seq_loader import Seq2SeqDataset
+import pickle
 # from transformers import BertTokenizer
 
 from tqdm import *
@@ -114,18 +115,29 @@ class ConcatDataset(Seq2SeqDataset):
         self.batch_size = batch_size
         self.sent_reverse_order = sent_reverse_order
 
-        # read the file into memory
-        self.ex_list = []
-        with open(file_src, "r", encoding="utf-8") as f_src, open(file_tgt, "r", encoding="utf-8") as f_tgt:
-            for src, tgt in zip(tqdm(f_src.readlines()), tqdm(f_tgt.readlines())):
-                docs = [json.loads(x) for x in src.strip().strip("\n").split("\t")]
-                docs = [x["title"] + " " + x["abstract"] for x in docs]
-                keywords = tgt.strip().strip("\n").split("\t")
-                src_tk = tokenizer.tokenize(" ".join(docs))
-                for kk in keywords:
-                    tgt_tk = tokenizer.tokenize(kk)
-                    if len(src_tk) > 0 and len(tgt_tk) > 0:
-                        self.ex_list.append((src_tk, tgt_tk))
+        self.cached = False
+        if os.path.exists("cached_dataset.pl") :
+            self.cached = True
+        
+        # if cached, load cache
+        if self.cached:
+            self.ex_list = pickle.load("cached_dataset.pl")
+        else:
+            # read the file into memory
+            self.ex_list = []
+            with open(file_src, "r", encoding="utf-8") as f_src, open(file_tgt, "r", encoding="utf-8") as f_tgt:
+                for src, tgt in zip(tqdm(f_src.readlines()), tqdm(f_tgt.readlines())):
+                    docs = [json.loads(x) for x in src.strip().strip("\n").split("\t")]
+                    docs = [x["title"] + " " + x["abstract"] for x in docs]
+                    keywords = tgt.strip().strip("\n").split("\t")
+                    src_tk = tokenizer.tokenize(" ".join(docs))
+                    for kk in keywords:
+                        tgt_tk = tokenizer.tokenize(kk)
+                        if len(src_tk) > 0 and len(tgt_tk) > 0:
+                            self.ex_list.append((src_tk, tgt_tk))
+            
+            pickle.dump(self.ex_list, "cached_dataset.pl")
+
         
         print('Load {0} documents'.format(len(self.ex_list)))
         # caculate statistics
