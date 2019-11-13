@@ -24,7 +24,7 @@ from pytorch_pretrained_bert.modeling import BertForSeq2SeqDecoder
 from pytorch_pretrained_bert.optimization import BertAdam, warmup_linear
 
 from nn.data_parallel import DataParallelImbalance
-import biunilm.long_loader as long_loader
+
 import biunilm.seq2seq_loader as seq2seq_loader
 
 from nltk.stem import Porterstemmer
@@ -236,6 +236,7 @@ def main():
                     elif args.experiment == "title-l1":
                         load_func = load_title_l1
                 input_lines = [" ".join(load_func(line)) for line in input_lines]
+
             data_tokenizer = WhitespaceTokenizer() if args.tokenized_input else tokenizer
             input_lines = [data_tokenizer.tokenize(
                 x)[:max_src_length] for x in input_lines]
@@ -246,76 +247,125 @@ def main():
             total_batch = math.ceil(len(input_lines) / args.batch_size)
 
             with tqdm(total=total_batch) as pbar:
-                while next_i < len(input_lines):
-                    _chunk = input_lines[next_i:next_i + args.batch_size]
-                    buf_id = [x[0] for x in _chunk]
-                    buf = [x[1] for x in _chunk]
-                    next_i += args.batch_size
-                    max_a_len = max([len(x) for x in buf])
-                    instances = []
-                    for instance in [(x, max_a_len) for x in buf]:
-                        for proc in bi_uni_pipeline:
-                            instances.append(proc(instance))
-                    with torch.no_grad():
-                        batch = long_loader.batch_list_to_batch_tensors(
-                            instances)
-                        batch = [t.to(device) for t in batch]
-                        input_ids, token_type_ids, position_ids, input_mask, task_idx = batch
-                        traces = model(input_ids, token_type_ids,
-                                    position_ids, input_mask, task_idx=task_idx)
-                        if args.beam_size > 1:
-                            traces = {k: v.tolist() for k, v in traces.items()}
-                            output_ids = traces['pred_seq']
-                        else:
-                            output_ids = traces.tolist()
-                        for i in range(len(buf)):
-                            scores = traces['scores'][i]
-                            wids_list = traces['wids'][i]
-                            ptrs = traces['ptrs'][i]
-                            eos_id = 102
-                            top_k = args.top_k
-                            # first we need to find the eos frame where all symbols are eos
-                            # any frames after the eos frame are invalid
-                            last_frame_id = len(scores) - 1
-                            for _i, wids in enumerate(wids_list):
-                                if all(wid == eos_id for wid in wids):
-                                    last_frame_id = _i
+            while next_i < len(input_lines):
+                _chunk = input_lines[next_i:next_i + args.batch_size]
+                buf_id = [x[0] for x in _chunk]
+                buf = [x[1] for x in _chunk]
+                next_i += args.batch_size
+                max_a_len = max([len(x) for x in buf])
+                instances = []
+                for instance in [(x, max_a_len) for x in buf]:
+                    for proc in bi_uni_pipeline:
+                        instances.append(proc(instance))
+
+                with torch.no_grad():
+                    instance_tokens = [x[-1] for x in instances]
+                    instances = [x[:-1] for x in instances]
+                    batch = my_seq2seq_loader.batch_list_to_batch_tensors(
+                        instances)
+                    batch = [
+                        t.to(device) if t is not None else None for t in batch]
+                    input_ids, token_type_ids, position_ids, input_mask, mask_qkv, task_idx = batch
+                    
+                    # print("input_ids", input_ids.shape)
+                    traces, sl_logits = model(input_ids, token_type_ids,
+                                   position_ids, input_mask, task_idx=task_idx, mask_qkv=mask_qkv)
+                    
+                    tokens = instance_tokens
+                    sl_logits = sl_logits.detach().cpu().numpy()
+                    # decode sl logits
+                    # sort by logits  - one instance per time
+                    for ele_sl_logits, ele_tokens in zip(sl_logits, tokens):
+                        max_seq_length = len(ele_tokens)
+                        if len(ele_tokens) < position_ids.size(1):
+                            ele_tokens += [" "]*(position_ids.size(1) - len(ele_tokens))
+                        logits_one = [x[1] for x in ele_sl_logits]
+
+                        pred = np.argmax(ele_sl_logits, axis=1)
+
+                        # print(ele_tokens)
+                        # print(pred)
+
+                        # concat sequential labeliing to phrase
+                        results = []
+                        cur_phrase = []
+                        cur_logits = []
+
+                        assert len(ele_tokens) == len(ele_sl_logits) == len(pred)
+
+                        i = 0
+                        while i < max_seq_length:
+                            if pred[i] == 1:
+                                cur_phrase.append(ele_tokens[i])
+                                cur_logits.append(logits_one[i])
+                            elif pred[i] == 0 and len(cur_phrase) > 0:
+                                res = (cur_phrase, max(cur_logits))
+                                results.append(res)
+                                cur_phrase = []
+                                cur_logits = []
+                            i += 1
+                        # print(results)
+                        
+                        # rerank phrase in results by logits
+                        results = [" ".join(detokenize(x[0])) for x in sorted(results, key=lambda x:x[1], reverse=True)]
+                        # print(results)
+                        all_prekeyphrase_results.append(results) 
+
+                    if args.beam_size > 1:
+                        traces = {k: v.tolist() for k, v in traces.items()}
+                        output_ids = traces['pred_seq']
+                    else:
+                        output_ids = traces.tolist()
+                    for i in range(len(buf)):
+                        scores = traces['scores'][i]
+                        wids_list = traces['wids'][i]
+                        ptrs = traces['ptrs'][i]
+                        eos_id = 102
+                        top_k = args.top_k
+
+                        # first we need to find the eos frame where all symbols are eos 
+                        # any framses after the eos frame are invalid
+                        last_frame_id = len(scores) - 1
+                        for _i, wids in enumerate(wids_list):
+                            if all(wid == eos_id for wid in wids):
+                                last_frame_id = _i
+                                break
+                        frame_id = -1
+                        pos_in_frame = -1
+                        seqs = []
+                        for fid in range(last_frame_id + 1):
+                            for _i, wid in enumerate(wids_list[fid]):
+                                if wid == eos_id or fid == last_frame_id:
+                                    s = scores[fid][_i]
+
+                                    frame_id = fid
+                                    pos_in_frame = _i
+
+                                    if frame_id != -1 and s < 0:
+                                        seq = [wids_list[frame_id][pos_in_frame]]
+                                        for _fid in range(frame_id, 0, -1):
+                                            pos_in_frame = ptrs[_fid][pos_in_frame]
+                                            seq.append(wids_list[_fid - 1][pos_in_frame])
+                                        seq.reverse()
+                                        seqs.append([seq, s])
+                        seqs = sorted(seqs, key=lambda x: x[1], reverse=True)
+                        w_idss = [seq[0] for seq in seqs[:top_k]]
+                        output_sequences = []
+                        for w_ids in w_idss:
+                            output_buf = tokenizer.convert_ids_to_tokens(w_ids)
+                            output_tokens = []
+                            for t in output_buf:
+                                if t in ("[SEP]", "[PAD]"):
                                     break
-                            frame_id = -1
-                            pos_in_frame = -1
-                            seqs = []
-                            for fid in range(last_frame_id + 1):
-                                for _i, wid in enumerate(wids_list[fid]):
-                                    if wid == eos_id or fid == last_frame_id:
-                                        s = scores[fid][_i]
+                                output_tokens.append(t)
+                            output_sequence = ' '.join(detokenize(output_tokens))
+                            output_sequences.append(output_sequence)
+                        output_lines[buf_id[i]] = output_sequences
+                        if args.need_score_traces:
+                            score_trace_list[buf_id[i]] = {
+                                'scores': traces['scores'][i], 'wids': traces['wids'][i], 'ptrs': traces['ptrs'][i]}
 
-                                        frame_id = fid
-                                        pos_in_frame = _i
-
-                                        if frame_id != -1 and s < 0:
-                                            seq = [wids_list[frame_id][pos_in_frame]]
-                                            for _fid in range(frame_id, 0, -1):
-                                                pos_in_frame = ptrs[_fid][pos_in_frame]
-                                                seq.append(wids_list[_fid - 1][pos_in_frame])
-                                            seq.reverse()
-                                            seqs.append([seq, s])
-                            seqs = sorted(seqs, key= lambda x:x[1], reverse=True)
-                            w_idss = [seq[0] for seq in seqs[:top_k]]
-                            output_sequences = []
-                            for w_ids in w_idss:
-                                output_buf = tokenizer.convert_ids_to_tokens(w_ids)
-                                output_tokens = []
-                                for t in output_buf:
-                                    if t in ("[SEP]", "[PAD]"):
-                                        break
-                                    output_tokens.append(t)
-                                output_sequence = ' '.join(detokenize(output_tokens))
-                                output_sequences.append(output_sequence)
-                            output_lines[buf_id[i]] = output_sequences
-                            if args.need_score_traces:
-                                score_trace_list[buf_id[i]] = {
-                                    'scores': traces['scores'][i], 'wids': traces['wids'][i], 'ptrs': traces['ptrs'][i]}
-                    pbar.update(1)
+                pbar.update(1)
             if args.output_file:
                 fn_out = args.output_file
             else:
