@@ -222,7 +222,7 @@ class TitleLead1Dataset(Seq2SeqDataset):
                     docs = [json.loads(x) for x in src.strip().strip("\n").split("\t")]
                     titles = [x["title"]  for x in docs]
                     abstracts = [x["abstract"] for x in docs]
-                    abstracts_l1 = [nltk.sent_tokenize(x)[0] for x in docs]
+                    abstracts_l1 = [nltk.sent_tokenize(x)[0] for x in abstracts]
                     
                     docs = []
                     assert len(docs) == len(abstracts_l1)
