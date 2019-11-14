@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader, RandomSampler
 from torch.utils.data.distributed import DistributedSampler
 import random
 import pickle
+from Collections import Counter
 
 from pytorch_pretrained_bert.tokenization import BertTokenizer, WhitespaceTokenizer
 from pytorch_pretrained_bert.modeling import BertForSeq2SeqDecoder
@@ -27,6 +28,7 @@ from nn.data_parallel import DataParallelImbalance
 
 import biunilm.seq2seq_loader as seq2seq_loader
 from loader_utils import batch_list_to_batch_tensors
+from utils_concat import EvalDataset
 
 from nltk.stem import PorterStemmer
 from nltk import word_tokenize, sent_tokenize
@@ -220,24 +222,13 @@ def main():
             next_i = 0
             max_src_length = args.max_seq_length - 2 - args.max_tgt_length
 
-            with open(args.input_file, encoding="utf-8") as fin:
+            if args.experiment in ["full", "title", "title-l1"]:
+                input_lines = EvalDataset(args.input_file, args.experiment).proc()
+            elif args.experiment == "single":
+                input_lines, map_dict = EvalDataset(args.input_file, args.experiment).proc()
+            else:
                 input_lines = []
-                for line in tqdm(fin.readlines()):
-                    line = line.strip().split("\t")
-                    def load_full(x):
-                        return x["title"] + " " + x["abstract"]
-                    def load_title(x):
-                        return x["title"] 
-                    def load_title_l1(x):
-                        return x["title"] + " " + sent_tokenize(x["abstract"])[0]
-                    if args.experiment == "full":
-                        load_func = load_full
-                    elif args.experiment == "title":
-                        load_func = load_title
-                    elif args.experiment == "title-l1":
-                        load_func = load_title_l1
-                    docs = [load_func(json.loads(doc)) for doc in line]
-                    input_lines.append(" ".join(docs))
+            
             data_tokenizer = WhitespaceTokenizer() if args.tokenized_input else tokenizer
             input_lines = [data_tokenizer.tokenize(
                 x)[:max_src_length] for x in input_lines]
@@ -321,6 +312,20 @@ def main():
                                 score_trace_list[buf_id[i]] = {
                                     'scores': traces['scores'][i], 'wids': traces['wids'][i], 'ptrs': traces['ptrs'][i]}
                     pbar.update(1)
+            # collect instances after split
+            results = []
+            if args.experiment == "single":
+                for clu in map_dict:
+                    record = []
+                    clu_ixs = map_dict[clu]
+                    for i in clu_ixs:
+                        record.extend(output_lines[i])
+                    record_top10 = Counter(record).most_common(10)
+                    record_top10 = [x[0] for x in record_top10]
+                    results.append(record_top10)
+
+                output_lines = results
+                
             if args.output_file:
                 fn_out = args.output_file
             else:

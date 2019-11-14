@@ -3,7 +3,9 @@ import sys
 import copy
 import nltk
 
+
 from seq2seq_loader import Seq2SeqDataset
+from nltk import sent_tokenize
 import pickle
 # from transformers import BertTokenizer
 
@@ -296,4 +298,57 @@ class SingleTrainingDataset(Seq2SeqDataset):
         src_tk_lens = [len(x[0]) for x in self.ex_list]
         tgt_tk_lens = [len(x[1]) for x in self.ex_list]
         print("Statistics:\nsrc_tokens: max:{0}  min:{1}  avg:{2}\ntgt_tokens: max:{3} min:{4} avg:{5}".format(max(src_tk_lens), min(src_tk_lens), sum(src_tk_lens)/len(self.ex_list), max(tgt_tk_lens), min(tgt_tk_lens), sum(tgt_tk_lens)/len(tgt_tk_lens)))
+
+class EvalDataset(object):
+    def __init__(self,input_file, experiment):
+        self.input_file = input_file
+        self.mode = mode
+    
+    def load_full(self, x):
+        return x["title"] + " " + x["abstract"]
+    
+    def load_title(self, x):
+        return x["title"]
+    
+    def load_title_l1(self, x):
+        return x["title"] + " " + sent_tokenize(x["abstract"])[0]
+    
+    def proc(self):
+        input_lines = []
+        if self.experiment in ["full", "title", "title-l1"]:
+            if self.experiment == "full":
+                load_func = self.load_full
+            elif self.experiment == "title":
+                load_func = self.load_title
+            else:
+                load_func = self.load_title_l1
+            
+            with open(self.input_file) as fin:
+                for line in tqdm(fin.readlines()):
+                    line = line.strip().split("\t")
+                    docs = [load_func(json.loads(doc)) for doc in line]
+                    input_lines.append(" ".join(docs))
+            return input_lines
+
+        elif self.experiment == "single":
+            clu_cnt = 0
+            glo_cnt = 0
+            map_dict = {}
+            with open(self.input_file) as fin:
+                for line in tqdm(fin.readlines()):
+                    line = line.strip().split("\t")
+                    docs = [load_full(json.loads(doc)) for doc in line]
+                    for doc in docs:
+                        input_lines.append(doc)
+                        if clu_cnt not in map_dict:
+                            map_dict[clu_cnt] = [glo_cnt]
+                        else:
+                            map_dict[clu_cnt].append(glo_cnt)
+                        glo_cnt += 1
+                    clu_cnt += 1
+            return input_lines, map_dict
+
+
+
+
 
