@@ -280,7 +280,7 @@ class SingleTrainingDataset(Seq2SeqDataset):
                     json_docs = [json.loads(x) for x in src.strip().strip("\n").split("\t")]
                     for json_doc in json_docs:
                         doc = json_doc["title"] + " " + json_doc["abstract"]
-                        keywords = json_doc["keywords"].split(";")
+                        keywords = json_doc["keyword"].split(";")
                         src_tk = tokenizer.tokenize(doc)
                         for kk in keywords:
                             tgt_tk = tokenizer.tokenize(kk)
