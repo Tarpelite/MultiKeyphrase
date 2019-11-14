@@ -24,7 +24,7 @@ from pytorch_pretrained_bert.optimization import BertAdam, warmup_linear
 
 from nn.data_parallel import DataParallelImbalance
 import biunilm.seq2seq_loader as seq2seq_loader
-from utils_concat import ConcatDataset, TitleDataset, TitleLead1Dataset
+from utils_concat import ConcatDataset, TitleDataset, TitleLead1Dataset, SingleTrainingDataset
 import torch.distributed as dist
 
 
@@ -215,7 +215,7 @@ def main():
     parser.add_argument('--pos_shift', action='store_true',
                         help="Using position shift for fine-tuning.")
     parser.add_argument("--experiment", type=str, default="full",
-                        help="1.full (title + full abstract) 2.title (only title), 3.title-l1 (title + l1)")
+                        help="1.full (title + full abstract) 2.title (only title), 3.title-l1 (title + l1), 4. single")
 
     args = parser.parse_args()
 
@@ -279,6 +279,8 @@ def main():
         DatasetFunc = TitleDataset
     elif args.experiment == "title-l1":
         DatasetFunc = TitleLead1Dataset
+    elif args.experiment == "single":
+        DatasetFunc = SingleTrainingDataset
     
 
     if args.do_train:

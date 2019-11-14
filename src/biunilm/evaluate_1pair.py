@@ -145,7 +145,7 @@ def main():
     parser.add_argument('--do_predict', action='store_true', help="do_predict")
     parser.add_argument("--do_evaluate", action="store_true", help="caculate the scores if have label file")
     parser.add_argument("--label_file", type=str, default="")
-    parser.add_argument("--experiment", type=str, default="full", help="full/title/title-1pair")
+    parser.add_argument("--experiment", type=str, default="full", help="full/title/title-l1")
 
 
     args = parser.parse_args()
