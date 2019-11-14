@@ -224,11 +224,17 @@ class TitleLead1Dataset(Seq2SeqDataset):
                     abstracts = [x["abstract"] for x in docs]
                     abstracts_l1 = [nltk.sent_tokenize(x)[0] for x in abstracts]
                     
+                    try:
+                        assert len(titles) == len(abstracts_l1)
+                    except Exception as e:
+                        print("title", len(titles))
+                        print("abstrac_l1", len(abstracts_l1))
+
                     docs = []
-                    assert len(docs) == len(abstracts_l1)
                     for title, l1_line in zip(titles, abstracts_l1):
                         docs.append(title)
                         docs.append(l1_line)
+                    
                     keywords = tgt.strip().strip("\n").split("\t")
                     src_tk = tokenizer.tokenize(" ".join(docs))
                     for kk in keywords:

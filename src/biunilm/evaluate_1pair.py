@@ -367,7 +367,7 @@ def main():
                     
                 results_dict["P@{}".format(k)] = acc_cul*1.000 / cnt
                 results_dict["R@{}".format(k)] = r_cul*1.000 / cnt
-                results_dict["F1@{}".format(k)] - f1_cul*1.000 / cnt
+                results_dict["F1@{}".format(k)] = f1_cul*1.000 / cnt
             
             print(results_dict)
 if __name__ == "__main__":
