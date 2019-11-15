@@ -351,7 +351,7 @@ class EvalDataset(object):
             return input_lines, map_dict
         return input_lines
 
-class ScoreDataset(Object):
+class ScoreDataset(object):
     
     def __init__(self, file_src, file_tgt, batch_size, tokenizer, max_len, short_sampling_prob=0.1):
         self.tokenizer = tokenizer
