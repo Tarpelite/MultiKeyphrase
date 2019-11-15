@@ -2199,3 +2199,39 @@ class BertForQuestionAnswering(PreTrainedBertModel):
             return total_loss
         else:
             return start_logits, end_logits
+
+class BertForSentenceRanker(BertForSequenceClassification):
+    """
+        The Bert Model is fixed, only updates the classofier layer.
+    """
+    def __init__(self, config, num_labels=2):
+        super(BertForSentenceRanker, self).__init__(config)
+        self.num_labels = num_labels
+        self.bert = BertModel(config)
+        self.dropout = nn.Dropout(config.hidden_dropout_prob)
+        self.classifier = nn.Linear(config.hidden_size, num_labels)
+        self.apply(self.init_bert_weights)
+
+    def forward(self, input_ids, token_type_ids=None, attention_mask=None, labels=None):
+        with torch.no_grad():
+            _, pooled_output = self.bert(
+                input_ids, token_type_ids, attention_mask, output_all_encoded_layers=False, mask_qkv=mask_qkv, task_idx=task_idx)
+            pooled_output = self.dropout(pooled_output)
+        logits = self.classifier(pooled_output)
+
+        if labels is not None:
+            if labels.dtype == torch.long:
+                loss_fct = CrossEntropyLoss()
+                loss = loss_fct(
+                    logits.view(-1, self.num_labels), labels.view(-1))
+            elif labels.dtype == torch.half or labels.dtype == torch.float:
+                loss_fct = MSELoss()
+                loss = loss_fct(logits.view(-1), labels.view(-1))
+            else:
+                print('unkown labels.dtype')
+                loss = None
+            return loss
+        else:
+            return logits
+
+

@@ -4,9 +4,11 @@ import copy
 import nltk
 
 
-from seq2seq_loader import Seq2SeqDataset
-from nltk import sent_tokenize
+from seq2seq_loader import Seq2SeqDataset, Preprocess4Seq2seq, truncate_tokens_pair
+from nltk import sent_tokenize, word_tokenize
+from nltk.stem import PorterStemmer
 import pickle
+import numpy as np
 # from transformers import BertTokenizer
 
 from tqdm import *
@@ -349,7 +351,235 @@ class EvalDataset(object):
             return input_lines, map_dict
         return input_lines
 
+class ScoreDataset(Object):
+    
+    def __init__(self, file_src, file_tgt, batch_size, tokenizer, max_len, short_sampling_prob=0.1):
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+        self.short_sampling_prob = short_sampling_prob
+        self.bi_uni_pipeline = bi_uni_pipeline
+        self.batch_size = batch_size
+        self.sent_reverse_order = sent_reverse_order
+        self.cached = False
+        self.stemmer = PorterStemmer()
+
+        if os.path.exists("cached_dataset.pl"):
+            self.cached = True
+        
+        if self.cached:
+            with open("cached_dataset.pl", "rb") as f:
+                self.ex_list = pickle.load(f)
+        else:
+            self.ex_list = []
+            with open(file_src, "r", encoding="utf-8") as f_src, open(file_tgt, "r", encoding="utf-8") as f_tgt:
+                for src, tgt in zip(tqdm(f_src.readlines()), tqdm(f_tgt.readlines())):
+                    docs = [json.loads(x) for x in src.strip().strip("\n").split("\t")]
+                    titles = [x["title"]  for x in docs]
+                    abstracts = [x["title"] + ". " + x["abstract"] for x in docs]
+                    keywords = tgt.strip().strip("\n").split()
+                    keywords_stemmed = [self.stem(x) for x in keywords]
+
+                    for doc in docs:
+                        title = doc["title"]
+                        abstract = doc["abstract"]
+                        sents = sent_tokenize(abstract)
+                        for sent in sents:
+                            label = 0
+                            sent_stemmed = self.stem(sent)
+                            for kk in keywords_stemmed:
+                                if kk in sent_stemmed:
+                                    label = 1
+                                    break
+                            src_tk = tokenizer.tokenize(title)
+                            tgt_tk = tokenizer.tokenize(sent)
+                            if len(src_tk) > 0 and len(tgt_tk) > 0:
+                                self.ex_list.append((src_tk, tgt_tk, label))
 
 
+    def stem(self, x):
+        return " ".join([self.stemmer.stem(w) for w in word_tokenize(x)])
+
+
+
+
+class Preprocess4Seq2cls(Preprocess4Seq2seq):
+
+    def __init__(self, max_pred, mask_prob, vocab_words, indexer, max_len=512, skipgram_prb=0, skipgram_size=0, block_mask=False, mask_whole_word=False, new_segment_ids=False, truncate_config={}, mask_source_words=False, mode="s2s", has_oracle=False, num_qkv=0, s2s_special_token=False, s2s_add_segment=False, s2s_share_segment=False, pos_shift=False):
+        super().__init__(max_pred, mask_prob, vocab_words, indexer, max_len=512, skipgram_prb=0, skipgram_size=0, block_mask=False, mask_whole_word=False, new_segment_ids=False, truncate_config={}, mask_source_words=False, mode="s2s", has_oracle=False, num_qkv=0, s2s_special_token=False, s2s_add_segment=False, s2s_share_segment=False, pos_shift=False)
+    
+    def __call__(self, instance):
+        tokens_a, tokens_b, label = instance
+        if self.pos_shift:
+            tokens_b = ['[S2S_SOS]'] + tokens_b
+
+        # -3  for special tokens [CLS], [SEP], [SEP]
+        num_truncated_a, _ = truncate_tokens_pair(tokens_a, tokens_b, self.max_len - 3, max_len_a=self.max_len_a,
+                                                  max_len_b=self.max_len_b, trunc_seg=self.trunc_seg, always_truncate_tail=self.always_truncate_tail)
+
+        # Add Special Tokens
+        if self.s2s_special_token:
+            tokens = ['[S2S_CLS]'] + tokens_a + \
+                ['[S2S_SEP]'] + tokens_b + ['[SEP]']
+        else:
+            tokens = ['[CLS]'] + tokens_a + ['[SEP]'] + tokens_b + ['[SEP]']
+
+        if self.new_segment_ids:
+            if self.mode == "s2s":
+                if self.s2s_add_segment:
+                    if self.s2s_share_segment:
+                        segment_ids = [0] + [1] * \
+                            (len(tokens_a)+1) + [5]*(len(tokens_b)+1)
+                    else:
+                        segment_ids = [4] + [6] * \
+                            (len(tokens_a)+1) + [5]*(len(tokens_b)+1)
+                else:
+                    segment_ids = [4] * (len(tokens_a)+2) + \
+                        [5]*(len(tokens_b)+1)
+            else:
+                segment_ids = [2] * (len(tokens))
+        else:
+            segment_ids = [0]*(len(tokens_a)+2) + [1]*(len(tokens_b)+1)
+
+        if self.pos_shift:
+            n_pred = min(self.max_pred, len(tokens_b))
+            masked_pos = [len(tokens_a)+2+i for i in range(len(tokens_b))]
+            masked_weights = [1]*n_pred
+            masked_ids = self.indexer(tokens_b[1:]+['[SEP]'])
+        else:
+            # For masked Language Models
+            # the number of prediction is sometimes less than max_pred when sequence is short
+            effective_length = len(tokens_b)
+            if self.mask_source_words:
+                effective_length += len(tokens_a)
+            n_pred = min(self.max_pred, max(
+                1, int(round(effective_length*self.mask_prob))))
+            # candidate positions of masked tokens
+            cand_pos = []
+            special_pos = set()
+            for i, tk in enumerate(tokens):
+                # only mask tokens_b (target sequence)
+                # we will mask [SEP] as an ending symbol
+                if (i >= len(tokens_a)+2) and (tk != '[CLS]'):
+                    cand_pos.append(i)
+                elif self.mask_source_words and (i < len(tokens_a)+2) and (tk != '[CLS]') and (not tk.startswith('[SEP')):
+                    cand_pos.append(i)
+                else:
+                    special_pos.add(i)
+            shuffle(cand_pos)
+
+            masked_pos = set()
+            max_cand_pos = max(cand_pos)
+            for pos in cand_pos:
+                if len(masked_pos) >= n_pred:
+                    break
+                if pos in masked_pos:
+                    continue
+
+                def _expand_whole_word(st, end):
+                    new_st, new_end = st, end
+                    while (new_st >= 0) and tokens[new_st].startswith('##'):
+                        new_st -= 1
+                    while (new_end < len(tokens)) and tokens[new_end].startswith('##'):
+                        new_end += 1
+                    return new_st, new_end
+
+                if (self.skipgram_prb > 0) and (self.skipgram_size >= 2) and (rand() < self.skipgram_prb):
+                    # ngram
+                    cur_skipgram_size = randint(2, self.skipgram_size)
+                    if self.mask_whole_word:
+                        st_pos, end_pos = _expand_whole_word(
+                            pos, pos + cur_skipgram_size)
+                    else:
+                        st_pos, end_pos = pos, pos + cur_skipgram_size
+                else:
+                    # directly mask
+                    if self.mask_whole_word:
+                        st_pos, end_pos = _expand_whole_word(pos, pos + 1)
+                    else:
+                        st_pos, end_pos = pos, pos + 1
+
+                for mp in range(st_pos, end_pos):
+                    if (0 < mp <= max_cand_pos) and (mp not in special_pos):
+                        masked_pos.add(mp)
+                    else:
+                        break
+
+            masked_pos = list(masked_pos)
+            if len(masked_pos) > n_pred:
+                shuffle(masked_pos)
+                masked_pos = masked_pos[:n_pred]
+
+            masked_tokens = [tokens[pos] for pos in masked_pos]
+            for pos in masked_pos:
+                if rand() < 0.8:  # 80%
+                    tokens[pos] = '[MASK]'
+                elif rand() < 0.5:  # 10%
+                    tokens[pos] = get_random_word(self.vocab_words)
+            # when n_pred < max_pred, we only calculate loss within n_pred
+            masked_weights = [1]*len(masked_tokens)
+
+            # Token Indexing
+            masked_ids = self.indexer(masked_tokens)
+        # Token Indexing
+        input_ids = self.indexer(tokens)
+
+        # Zero Padding
+        n_pad = self.max_len - len(input_ids)
+        input_ids.extend([0]*n_pad)
+        segment_ids.extend([0]*n_pad)
+
+        if self.num_qkv > 1:
+            mask_qkv = [0]*(len(tokens_a)+2) + [1] * (len(tokens_b)+1)
+            mask_qkv.extend([0]*n_pad)
+        else:
+            mask_qkv = None
+
+        input_mask = torch.zeros(self.max_len, self.max_len, dtype=torch.long)
+        if self.mode == "s2s":
+            input_mask[:, :len(tokens_a)+2].fill_(1)
+            second_st, second_end = len(
+                tokens_a)+2, len(tokens_a)+len(tokens_b)+3
+            input_mask[second_st:second_end, second_st:second_end].copy_(
+                self._tril_matrix[:second_end-second_st, :second_end-second_st])
+        else:
+            st, end = 0, len(tokens_a) + len(tokens_b) + 3
+            input_mask[st:end, st:end].copy_(self._tril_matrix[:end, :end])
+
+        # Zero Padding for masked target
+        if self.max_pred > n_pred:
+            n_pad = self.max_pred - n_pred
+            if masked_ids is not None:
+                masked_ids.extend([0]*n_pad)
+            if masked_pos is not None:
+                masked_pos.extend([0]*n_pad)
+            if masked_weights is not None:
+                masked_weights.extend([0]*n_pad)
+
+        oracle_pos = None
+        oracle_weights = None
+        oracle_labels = None
+        if self.has_oracle:
+            s_st, labls = instance[2:]
+            oracle_pos = []
+            oracle_labels = []
+            for st, lb in zip(s_st, labls):
+                st = st - num_truncated_a[0]
+                if st > 0 and st < len(tokens_a):
+                    oracle_pos.append(st)
+                    oracle_labels.append(lb)
+            oracle_pos = oracle_pos[:20]
+            oracle_labels = oracle_labels[:20]
+            oracle_weights = [1] * len(oracle_pos)
+            if len(oracle_pos) < 20:
+                x_pad = 20 - len(oracle_pos)
+                oracle_pos.extend([0] * x_pad)
+                oracle_labels.extend([0] * x_pad)
+                oracle_weights.extend([0] * x_pad)
+
+            return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids,
+                    masked_pos, masked_weights, -1, self.task_idx,
+                    oracle_pos, oracle_weights, oracle_labels)
+        
+        return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx, label)
 
 
