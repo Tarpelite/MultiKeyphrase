@@ -302,7 +302,7 @@ class SingleTrainingDataset(Seq2SeqDataset):
 class EvalDataset(object):
     def __init__(self,input_file, experiment):
         self.input_file = input_file
-        self.mode = experiment
+        self.experiment = experiment
     
     def load_full(self, x):
         return x["title"] + " " + x["abstract"]
