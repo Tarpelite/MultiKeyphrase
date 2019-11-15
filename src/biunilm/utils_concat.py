@@ -4,7 +4,7 @@ import copy
 import nltk
 
 
-from seq2seq_loader import Seq2SeqDataset, Preprocess4Seq2seq, truncate_tokens_pair
+from seq2seq_loader import *
 from nltk import sent_tokenize, word_tokenize
 from nltk.stem import PorterStemmer
 import pickle
@@ -14,6 +14,8 @@ from random import shuffle
 
 from tqdm import *
 import os
+from random import randint, shuffle, choice
+from random import random as rand
 
 class InputExample(object):
     """
