@@ -9,6 +9,7 @@ from nltk import sent_tokenize, word_tokenize
 from nltk.stem import PorterStemmer
 import pickle
 import numpy as np
+from random import shuffle
 # from transformers import BertTokenizer
 
 from tqdm import *
