@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader, RandomSampler
 from torch.utils.data.distributed import DistributedSampler
 import random
 import pickle
-from Collections import Counter
+from collections import Counter
 
 from pytorch_pretrained_bert.tokenization import BertTokenizer, WhitespaceTokenizer
 from pytorch_pretrained_bert.modeling import BertForSeq2SeqDecoder
@@ -325,7 +325,7 @@ def main():
                     results.append(record_top10)
 
                 output_lines = results
-                
+
             if args.output_file:
                 fn_out = args.output_file
             else:

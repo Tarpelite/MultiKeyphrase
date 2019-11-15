@@ -347,6 +347,7 @@ class EvalDataset(object):
                         glo_cnt += 1
                     clu_cnt += 1
             return input_lines, map_dict
+        return input_lines
 
 
 
