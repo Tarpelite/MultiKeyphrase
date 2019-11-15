@@ -340,7 +340,7 @@ def main():
                 args.model_recover_path, map_location='cpu')
             global_step = 0
         model = BertForSentenceRanker.from_pretrained(
-            args.bert_model, state_dict=model_recover, num_labels=2, num_rel=0, type_vocab_size=type_vocab_size, config_path=args.config_path, task_idx=3, num_sentlvl_labels=num_sentlvl_labels, max_position_embeddings=args.max_position_embeddings, label_smoothing=args.label_smoothing, fp32_embedding=args.fp32_embedding, relax_projection=relax_projection, new_pos_ids=args.new_pos_ids, ffn_type=args.ffn_type, hidden_dropout_prob=args.hidden_dropout_prob, attention_probs_dropout_prob=args.attention_probs_dropout_prob, num_qkv=args.num_qkv, seg_emb=args.seg_emb)
+            args.bert_model, state_dict=model_recover, num_labels=2)
     if args.local_rank == 0:
         dist.barrier()
 
