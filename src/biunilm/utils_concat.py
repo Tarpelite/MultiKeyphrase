@@ -337,7 +337,7 @@ class EvalDataset(object):
             with open(self.input_file) as fin:
                 for line in tqdm(fin.readlines()):
                     line = line.strip().split("\t")
-                    docs = [load_full(json.loads(doc)) for doc in line]
+                    docs = [self.load_full(json.loads(doc)) for doc in line]
                     for doc in docs:
                         input_lines.append(doc)
                         if clu_cnt not in map_dict:
