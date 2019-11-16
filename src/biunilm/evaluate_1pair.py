@@ -231,9 +231,10 @@ def main():
             elif args.experiment == "single":
                 input_lines, map_dict = EvalDataset(args.input_file, args.experiment).proc()
             elif args.experiment == "heirachical":
+                logger.info("***** Recover rank model: %s *****", args.rank_recover_path)
                 # extract sentences before load data
                 # load rank model
-                rank_model_recover = torch.load(args.rank_model_recover_path, map_location="cpu")
+                rank_model_recover = torch.load(args.rank_recover_path, map_location="cpu")
                 global_step = 0
                 rank_model = BertForSentenceRanker.from_pretrained(args.bert_model, state_dict=rank_model_recover, num_labels=2)
                 
