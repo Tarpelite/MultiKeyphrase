@@ -308,6 +308,7 @@ def main():
                     input_line  = ""
                     for idx in doc_idx:
                         input_line += all_docs[idx]
+                    input_lines.append(input_line)
             else:
                 input_lines = []
             
