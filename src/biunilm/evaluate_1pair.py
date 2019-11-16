@@ -295,12 +295,12 @@ def main():
                 clu2doc_dict, doc2sent_dict, all_titles, all_sents = eval_dataset.get_maps()
                 all_docs = []
                 for i, doc in enumerate(doc2sent_dict):
-                    doc = all_titles[i]
+                    text = all_titles[i]
                     sent_idx = doc2sent_dict[doc]
                     for idx in sent_idx:
                         if all_labels_results[idx] == 1:
-                            doc += ". " + all_sents[idx]
-                    all_docs.append(doc)
+                            text += ". " + all_sents[idx]
+                    all_docs.append(text)
                 
                 input_lines = []
                 for clu in tqdm(clu2doc_dict):
