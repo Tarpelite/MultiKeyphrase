@@ -467,7 +467,8 @@ def main():
             if (args.local_rank == -1 or torch.distributed.get_rank() == 0):
                 logger.info(
                     "** ** * Saving fine-tuned ranker model and optimizer ** ** * ")
-                model_to_save = model.classifier # Only save the classifier layer
+                model_to_save = model.module if hasattr(
+                    model, 'module') else model  # Only save the model it-self
                 output_model_file = os.path.join(
                     args.output_dir, "model.{0}.bin".format(i_epoch))
                 torch.save(model_to_save.state_dict(), output_model_file)

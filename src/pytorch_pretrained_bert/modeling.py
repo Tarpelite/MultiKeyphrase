@@ -2227,7 +2227,6 @@ class BertForSentenceRanker(BertForSequenceClassification):
             elif labels.dtype == torch.half or labels.dtype == torch.float:
                 loss_fct = MSELoss()
                 loss = loss_fct(logits.view(-1), labels.view(-1))
-            else:
                 print('unkown labels.dtype')
                 loss = None
             return loss
