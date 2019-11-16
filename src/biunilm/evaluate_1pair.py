@@ -241,10 +241,7 @@ def main():
                 # set model for multi GPUs or multi nodes
                 if args.fp16:
                     rank_model.half()
-                if args.fp32_embedding:
-                    rank_model.bert.embeddings.word_embeddings.float()
-                    rank_model.bert.embeddings.position_embeddings.float()
-                    rank_model.bert.embeddings.token_type_embeddings.float()
+                
                 rank_model.to(device)
 
                 if n_gpu > 1:
