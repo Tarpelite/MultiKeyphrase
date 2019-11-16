@@ -283,7 +283,7 @@ def main():
                     batch = [t.to(device) if t is not None else None for t in batch]
                     input_ids, segment_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next, task_idx = batch
                     logits = rank_model(input_ids, task_idx=task_idx, mask_qkv=mask_qkv)
-                    labels = torch.max(logits.view(-1, num_rank_labels), dim=-1)
+                    labels = torch.argmax(logits.view(-1, num_rank_labels), dim=-1)
                     all_labels.append(labels)
                 
                 all_labels_results = []
