@@ -264,7 +264,7 @@ def main():
                 eval_sampler = SequentialSampler(eval_dataset)
                 _batch_size = args.ranker_batch_size
 
-                eval_dataloader = torch.utils.data.DataLoader(eval_dataset, batch_size=_batch_size, sampler=eval_sampler, num_workers=args.num_workers, collate_fn=seq2seq_loader.batch_list_to_batch_tensors, pin_memory=False)
+                eval_dataloader = torch.utils.data.DataLoader(eval_dataset, batch_size=_batch_size, sampler=eval_sampler, num_workers=24, collate_fn=seq2seq_loader.batch_list_to_batch_tensors, pin_memory=False)
 
 
                 logger.info("***** CUDA.empty_cache() *****")
