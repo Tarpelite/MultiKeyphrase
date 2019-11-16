@@ -351,8 +351,11 @@ class EvalDataset(object):
                             map_dict[clu_cnt].append(glo_cnt)
                         glo_cnt += 1
                     clu_cnt += 1
-            return input_lines, map_dict
+            return input_lines, map_dict       
         return input_lines
+    
+
+
 
 class ScoreDataset(Seq2SeqDataset):
     
@@ -414,14 +417,93 @@ class ScoreDataset(Seq2SeqDataset):
 
 
 
+class ScoreEvalDataset(Seq2SeqDataset):
+    def __init__(self, file_src, file_tgt, batch_size, tokenizer, max_len, short_sampling_prob=0.1, sent_reverse_order=False, bi_uni_pipeline=[]):
+        # super().__init__(file_src, file_tgt, batch_size, tokenizer, max_len)
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+        self.short_sampling_prob = short_sampling_prob
+        self.bi_uni_pipeline = bi_uni_pipeline
+        self.batch_size = batch_size
+        self.sent_reverse_order = sent_reverse_order
+        self.cached = False
+        self.stemmer = PorterStemmer()
+
+        if os.path.exists("eval_cached_dataset.pl"):
+            self.cached = True
+        
+        if self.cached:
+            with open("eval_cached_dataset.pl", "rb") as f:
+                self.ex_list = pickle.load(f)
+        else:
+            self.ex_list = []
+            self.clu2doc_dict = {}
+            self.doc2sent_dict = {}
+            self.all_titles = []
+            self.all_sents = []
+            clu_cnt = 0
+            doc_cnt = 0
+            sent_cnt = 0
+            with open(file_src, "r", encoding="utf-8") as f_src:
+                for src in tqdm(f_src.readlines()):
+                    docs = [json.loads(x) for x in src.strip().strip("\n").split("\t")]
+                    titles = [x["title"]  for x in docs]
+                    abstracts = [x["title"] + ". " + x["abstract"] for x in docs]
+
+                    for doc in docs:
+                        title = doc["title"]
+                        abstract = doc["abstract"]
+                        sents = sent_tokenize(abstract)
+                        self.all_titles.append(title)
+                        for sent in sents:
+                            src_tk = tokenizer.tokenize(title)
+                            tgt_tk = tokenizer.tokenize(sent)
+                            if len(src_tk) > 0 and len(tgt_tk) > 0:
+                                self.ex_list.append((src_tk, tgt_tk))
+                                if doc_cnt not in self.doc2sent_dict:
+                                    self.doc2sent_dict[doc_cnt] = [sent_cnt]
+                                else:
+                                    self.doc2sent_dict[doc_cnt].append(sent_cnt)
+                                sent_cnt += 1
+                            self.all_sents.append(sent)
+                        if clu_cnt not in self.clu2doc_dict:
+                            self.clu2doc_dict[clu_cnt] = [doc_cnt]
+                        else:
+                            self.clu2doc_dict[clu_cnt].append(doc_cnt)
+                        doc_cnt += 1
+                    
+                    clu_cnt += 1
+                
+                    
+            with open("eval_cached_dataset.pl", "wb") as f:
+                pickle.dump(self.ex_list, f)
+
+        
+        print('Load {0} documents'.format(len(self.ex_list)))
+        # caculate statistics
+        src_tk_lens = [len(x[0]) for x in self.ex_list]
+        tgt_tk_lens = [len(x[1]) for x in self.ex_list]
+        print("Statistics:\nsrc_tokens: max:{0}  min:{1}  avg:{2}\ntgt_tokens: max:{3} min:{4} avg:{5}".format(max(src_tk_lens), min(src_tk_lens), sum(src_tk_lens)/len(self.ex_list), max(tgt_tk_lens), min(tgt_tk_lens), sum(tgt_tk_lens)/len(tgt_tk_lens)))
+
+
+    def stem(self, x):
+        return " ".join([self.stemmer.stem(w) for w in word_tokenize(x)])
+    
+    def get_maps(self):
+        return self.clu2doc_dict, self.doc2sent_dict, self.all_titles, self.all_sents
+
+
 
 class Preprocess4Seq2cls(Preprocess4Seq2seq):
 
-    def __init__(self, max_pred, mask_prob, vocab_words, indexer, max_len=512, skipgram_prb=0, skipgram_size=0, block_mask=False, mask_whole_word=False, new_segment_ids=False, truncate_config={}, mask_source_words=False, mode="s2s", has_oracle=False, num_qkv=0, s2s_special_token=False, s2s_add_segment=False, s2s_share_segment=False, pos_shift=False):
+    def __init__(self, max_pred, mask_prob, vocab_words, indexer, max_len=512, skipgram_prb=0, skipgram_size=0, block_mask=False, mask_whole_word=False, new_segment_ids=False, truncate_config={}, mask_source_words=False, mode="s2s", has_oracle=False, num_qkv=0, s2s_special_token=False, s2s_add_segment=False, s2s_share_segment=False, pos_shift=False, eval=False):
         super().__init__(max_pred, mask_prob, vocab_words, indexer, max_len=512, skipgram_prb=0, skipgram_size=0, block_mask=False, mask_whole_word=False, new_segment_ids=False, truncate_config={}, mask_source_words=False, mode="s2s", has_oracle=False, num_qkv=0, s2s_special_token=False, s2s_add_segment=False, s2s_share_segment=False, pos_shift=False)
-    
+        self.eval = eval
     def __call__(self, instance):
-        tokens_a, tokens_b, label = instance
+        if not self.eval:
+            tokens_a, tokens_b, label = instance
+        else:
+            label = instance
         if self.pos_shift:
             tokens_b = ['[S2S_SOS]'] + tokens_b
 
@@ -592,7 +674,8 @@ class Preprocess4Seq2cls(Preprocess4Seq2seq):
             return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids,
                     masked_pos, masked_weights, -1, self.task_idx,
                     oracle_pos, oracle_weights, oracle_labels)
-        
+        if self.eval:
+            return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx, label)
         return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx, label)
 
 

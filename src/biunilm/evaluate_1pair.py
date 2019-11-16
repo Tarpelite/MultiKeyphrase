@@ -14,21 +14,21 @@ from tqdm import tqdm, trange
 from tensorboardX import SummaryWriter
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, RandomSampler
+from torch.utils.data import DataLoader, RandomSampler, SequentialSampler
 from torch.utils.data.distributed import DistributedSampler
 import random
 import pickle
 from collections import Counter
 
 from pytorch_pretrained_bert.tokenization import BertTokenizer, WhitespaceTokenizer
-from pytorch_pretrained_bert.modeling import BertForSeq2SeqDecoder
+from pytorch_pretrained_bert.modeling import BertForSeq2SeqDecoder, BertForSentenceRanker
 from pytorch_pretrained_bert.optimization import BertAdam, warmup_linear
 
 from nn.data_parallel import DataParallelImbalance
 
 import biunilm.seq2seq_loader as seq2seq_loader
 from loader_utils import batch_list_to_batch_tensors
-from utils_concat import EvalDataset
+from utils_concat import EvalDataset, ScoreEvalDataset, Preprocess4Seq2cls
 
 from nltk.stem import PorterStemmer
 from nltk import word_tokenize, sent_tokenize
@@ -147,8 +147,12 @@ def main():
     parser.add_argument('--do_predict', action='store_true', help="do_predict")
     parser.add_argument("--do_evaluate", action="store_true", help="caculate the scores if have label file")
     parser.add_argument("--label_file", type=str, default="")
-    parser.add_argument("--experiment", type=str, default="full", help="full/title/title-l1")
+    parser.add_argument("--experiment", type=str, default="full", help="full/title/title-l1/hierachical")
 
+    # ranker parameters
+    parser.add_argument("--ranker_recover_path", type=str, help="ranker model for extract sentence")
+    parser.add_argument("--ranker_max_len", type=int, default=192, help ="max length of the ranker input")
+    parser.add_argument("--ranker_batch_size", type=int, default=128)
 
     args = parser.parse_args()
 
@@ -226,6 +230,83 @@ def main():
                 input_lines = EvalDataset(args.input_file, args.experiment).proc()
             elif args.experiment == "single":
                 input_lines, map_dict = EvalDataset(args.input_file, args.experiment).proc()
+            elif args.experiment == "heirachical":
+                # extract sentences before load data
+                # load rank model
+                rank_model_recover = torch.load(args.rank_model_recover_path, map_location="cpu")
+                global_step = 0
+                rank_model = BertForSentenceRanker.from_pretrained(args.bert_model, state_dict=rank_model_recover, num_labels=2)
+                
+                # set model for multi GPUs or multi nodes
+                if args.fp16:
+                    rank_model.half()
+                if args.fp32_embedding:
+                    rank_model.bert.embeddings.word_embeddings.float()
+                    rank_model.bert.embeddings.position_embeddings.float()
+                    rank_model.bert.embeddings.token_type_embeddings.float()
+                rank_model.to(device)
+
+                if n_gpu > 1:
+                    rank_model = DataParallelImbalance(rank_model)
+                
+                DatasetFunc = ScoreEvalDataset
+                
+                # Load title + sentence pair
+                print ("Loading Rank Dataset", args.data_dir)
+                data_tokenizer = WhitespaceTokenizer() if args.tokenized_input else tokenizer
+                rank_bi_uni_pipeline = [Preprocess4Seq2cls(args.max_pred, args.mask_prob, list(tokenizer.vocab.keys()), tokenizer.convert_tokens_to_ids, args.max_seq_length, new_segment_ids=args.new_segment_ids, truncate_config={'max_len_a': args.max_len_a, 'max_len_b': args.max_len_b, 'trunc_seg': args.trunc_seg, 'always_truncate_tail': args.always_truncate_tail}, mask_source_words=args.mask_source_words, skipgram_prb=args.skipgram_prb, skipgram_size=args.skipgram_size, mask_whole_word=args.mask_whole_word, mode="s2s", has_oracle=args.has_sentence_oracle, num_qkv=args.num_qkv, s2s_special_token=args.s2s_special_token, s2s_add_segment=args.s2s_add_segment, s2s_share_segment=args.s2s_share_segment, pos_shift=args.pos_shift, eval=True)]
+                fn_src = args.input_file
+                fn_tgt = None
+                eval_dataset = DatasetFunc(
+                     fn_src, fn_tgt, args.ranker_batch_size, data_tokenizer, args.max_seq_length, bi_uni_pipeline=rank_bi_uni_pipeline
+                )
+
+                eval_sampler = SequentialSampler(eval_dataset)
+                _batch_size = args.ranker_batch_size
+
+                eval_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=_batch_size, sampler=eval_sampler, num_workers=args.num_workers, collate_fn=seq2seq_loader.batch_list_to_batch_tensors, pin_memory=False)
+
+                logger.info("***** CUDA.empty_cache() *****")
+                torch.cuda.empty_cache()
+                logger.info("***** Runinning ranker *****")
+                logger.info("   Batch size = %d", _batch_size)
+                logger.info("   Num steps = %d", t_total)
+
+                rank_model.to(device)
+                rank_model.eval()
+
+                iter_bar = tqdm(eval_dataloader, desc = "Iter: ")
+                num_rank_labels = 2
+                all_labels = []
+                for step, batch in enumerate(iter_bar):
+                    batch = [t.to(device) if t is not None else None for t in batch]
+                    input_ids, segment_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next = batch
+                    logits = model(input_ids, segment_ids, input_mask, task_idx=task_idx, mask_qkv=mask_qkv)
+                    labels = torch.max(logits.view(-1, num_rank_labels), dim=-1)
+                    all_labels.append(labels)
+                
+                all_labels_results = []
+                for label in all_labels:
+                    all_labels_results.extend(label.detach().cpu().numpy())
+                
+                # collect results
+                logger.info("**** Collect results ******")
+                clu2doc_dict, doc2sent_dict, all_titles, all_sents = eval_dataset.get_maps()
+                all_docs = []
+                for i, doc in enumerate(doc2sent_dict):
+                    doc = all_titles[i]
+                    sent_idx = doc2sent_dict[doc]
+                    for idx in sent_idx:
+                        if all_labels_results[idx] == 1:
+                            doc += ". " + all_sents[idx]
+                    all_docs.append(doc)
+                
+                input_lines = []
+                for clu in tqdm(clu2doc_dict):
+                    doc_idx = clu2doc_dict[clu]
+                    input_line  = ""
+                    for idx in doc_idx:
+                        input_line += all_docs[idx]
             else:
                 input_lines = []
             
