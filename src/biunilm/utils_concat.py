@@ -428,6 +428,11 @@ class ScoreEvalDataset(Seq2SeqDataset):
         self.sent_reverse_order = sent_reverse_order
         self.cached = False
         self.stemmer = PorterStemmer()
+        self.ex_list = []
+        self.clu2doc_dict = {}
+        self.doc2sent_dict = {}
+        self.all_titles = []
+        self.all_sents = []
 
         if os.path.exists("eval_cached_dataset.pl"):
             self.cached = True
@@ -436,11 +441,7 @@ class ScoreEvalDataset(Seq2SeqDataset):
             with open("eval_cached_dataset.pl", "rb") as f:
                 self.ex_list = pickle.load(f)
         else:
-            self.ex_list = []
-            self.clu2doc_dict = {}
-            self.doc2sent_dict = {}
-            self.all_titles = []
-            self.all_sents = []
+            
             clu_cnt = 0
             doc_cnt = 0
             sent_cnt = 0
