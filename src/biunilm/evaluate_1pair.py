@@ -282,7 +282,7 @@ def main():
                 for step, batch in enumerate(iter_bar):
                     batch = [t.to(device) if t is not None else None for t in batch]
                     input_ids, segment_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next, task_idx = batch
-                    logits = model(input_ids, segment_ids, input_mask, task_idx=task_idx, mask_qkv=mask_qkv)
+                    logits = model(input_ids, task_idx=task_idx, mask_qkv=mask_qkv)
                     labels = torch.max(logits.view(-1, num_rank_labels), dim=-1)
                     all_labels.append(labels)
                 
