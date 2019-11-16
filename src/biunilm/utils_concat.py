@@ -477,7 +477,7 @@ class ScoreEvalDataset(Seq2SeqDataset):
                 
                     
             with open("eval_cached_dataset.pl", "wb") as f:
-                pickle.dump(tuple(self.ex_list, self.clu2doc_dict, self.doc2sent_dict, self.all_titles. self.all_sents), f)
+                pickle.dump(tuple(self.ex_list, self.clu2doc_dict, self.doc2sent_dict, self.all_titles, self.all_sents), f)
 
         
         print('Load {0} documents'.format(len(self.ex_list)))
