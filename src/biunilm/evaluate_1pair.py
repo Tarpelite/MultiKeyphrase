@@ -264,13 +264,14 @@ def main():
                 eval_sampler = SequentialSampler(eval_dataset)
                 _batch_size = args.ranker_batch_size
 
-                eval_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=_batch_size, sampler=eval_sampler, num_workers=args.num_workers, collate_fn=seq2seq_loader.batch_list_to_batch_tensors, pin_memory=False)
+                eval_dataloader = torch.utils.data.DataLoader(eval_dataset, batch_size=_batch_size, sampler=eval_sampler, num_workers=args.num_workers, collate_fn=seq2seq_loader.batch_list_to_batch_tensors, pin_memory=False)
+
 
                 logger.info("***** CUDA.empty_cache() *****")
                 torch.cuda.empty_cache()
                 logger.info("***** Runinning ranker *****")
                 logger.info("   Batch size = %d", _batch_size)
-                logger.info("   Num steps = %d", t_total)
+                logger.info("   Num steps = %d", int(len(eval_dataset)/ args.ranker_batch_size))
 
                 rank_model.to(device)
                 rank_model.eval()
@@ -280,7 +281,7 @@ def main():
                 all_labels = []
                 for step, batch in enumerate(iter_bar):
                     batch = [t.to(device) if t is not None else None for t in batch]
-                    input_ids, segment_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next = batch
+                    input_ids, segment_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next, task_idx = batch
                     logits = model(input_ids, segment_ids, input_mask, task_idx=task_idx, mask_qkv=mask_qkv)
                     labels = torch.max(logits.view(-1, num_rank_labels), dim=-1)
                     all_labels.append(labels)
