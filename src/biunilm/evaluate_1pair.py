@@ -250,7 +250,7 @@ def main():
                 DatasetFunc = ScoreEvalDataset
                 
                 # Load title + sentence pair
-                print ("Loading Rank Dataset", args.data_dir)
+                print ("Loading Rank Dataset from ", args.input_file)
                 data_tokenizer = WhitespaceTokenizer() if args.tokenized_input else tokenizer
                 rank_bi_uni_pipeline = [Preprocess4Seq2cls(args.max_pred, args.mask_prob, list(tokenizer.vocab.keys()), tokenizer.convert_tokens_to_ids, args.max_seq_length, new_segment_ids=args.new_segment_ids, truncate_config={'max_len_a': args.max_len_a, 'max_len_b': args.max_len_b, 'trunc_seg': args.trunc_seg, 'always_truncate_tail': args.always_truncate_tail}, mask_source_words=args.mask_source_words, skipgram_prb=args.skipgram_prb, skipgram_size=args.skipgram_size, mask_whole_word=args.mask_whole_word, mode="s2s", has_oracle=args.has_sentence_oracle, num_qkv=args.num_qkv, s2s_special_token=args.s2s_special_token, s2s_add_segment=args.s2s_add_segment, s2s_share_segment=args.s2s_share_segment, pos_shift=args.pos_shift, eval=True)]
                 fn_src = args.input_file
