@@ -297,7 +297,7 @@ def main():
         fn_tgt = os.path.join(
             args.data_dir, args.tgt_file if args.tgt_file else 'train.tgt')
         train_dataset = DatasetFunc(
-            fn_src, fn_tgt, args.train_batch_size, data_tokenizer, args.max_seq_length, bi_uni_pipeline=bi_uni_pipeline)
+            fn_src, fn_tgt, args.train_batch_size, data_tokenizer, args.max_seq_length, args.max_len_b, bi_uni_pipeline=bi_uni_pipeline)
         if args.local_rank == -1:
             train_sampler = RandomSampler(train_dataset, replacement=False)
             _batch_size = args.train_batch_size
