@@ -368,6 +368,7 @@ class EvalDataset(object):
         self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
         self.max_tgt_length = max_tgt_length
+        self.max_len = max_seq_length - max_tgt_length - 3
     
     def load_full(self, x):
         return x["title"] + " " + x["abstract"]
@@ -395,7 +396,7 @@ class EvalDataset(object):
                     input_lines.append(" ".join(docs))
             return input_lines
         elif self.experiment == "title-first":
-            max_len = self.max_seq_length - self.max_tgt_length - 3
+            
             with open(self.input_file) as fin:
                 input_lines = []
                 for line in tqdm(fin.readlines()):
