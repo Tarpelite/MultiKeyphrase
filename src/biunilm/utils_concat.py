@@ -412,7 +412,7 @@ class EvalDataset(object):
                     input_line = titles_seq
                     input_line_tk = self.tokenizer.tokenize(titles_seq)
                     sents_idx = 0
-                    while sents_idx < len(sents) and len(input_line_tk) + len(self.tokenizer.tokenize(sents[sent_idx])) <= self.max_len :
+                    while sents_idx < len(sents) and len(input_line_tk) + len(self.tokenizer.tokenize(sents[sents_idx])) <= self.max_len :
                         input_line += sents[sents_idx]
                         input_line_tk += self.tokenizer.tokenize(sents[sents_idx])
                         sents_idx += 1
