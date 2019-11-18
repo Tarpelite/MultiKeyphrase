@@ -365,6 +365,7 @@ class EvalDataset(object):
     def __init__(self,input_file, experiment, tokenizer=None, max_seq_length=None, max_tgt_length=None):
         self.input_file = input_file
         self.experiment = experiment
+        self.tokenizer = tokenizer
         self.max_seq_length = max_seq_length
         self.max_tgt_length = max_tgt_length
     
