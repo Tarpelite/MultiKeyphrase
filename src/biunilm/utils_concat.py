@@ -16,6 +16,7 @@ from tqdm import *
 import os
 from random import randint, shuffle, choice
 from random import random as rand
+from rouge_score import rouge_scorer
 
 class InputExample(object):
     """
@@ -202,6 +203,7 @@ class TitleDataset(Seq2SeqDataset):
         print("Statistics:\nsrc_tokens: max:{0}  min:{1}  avg:{2}\ntgt_tokens: max:{3} min:{4} avg:{5}".format(max(src_tk_lens), min(src_tk_lens), sum(src_tk_lens)/len(self.ex_list), max(tgt_tk_lens), min(tgt_tk_lens), sum(tgt_tk_lens)/len(tgt_tk_lens)))
 
 
+
 class TitleLead1Dataset(Seq2SeqDataset):
     
     def __init__(self, file_src, file_tgt, batch_size, tokenizer, max_len, short_sampling_prob=0.1, sent_reverse_order=False, bi_uni_pipeline=[]):
@@ -259,6 +261,61 @@ class TitleLead1Dataset(Seq2SeqDataset):
         tgt_tk_lens = [len(x[1]) for x in self.ex_list]
         print("Statistics:\nsrc_tokens: max:{0}  min:{1}  avg:{2}\ntgt_tokens: max:{3} min:{4} avg:{5}".format(max(src_tk_lens), min(src_tk_lens), sum(src_tk_lens)/len(self.ex_list), max(tgt_tk_lens), min(tgt_tk_lens), sum(tgt_tk_lens)/len(tgt_tk_lens)))
 
+class TitleFirstDataset(Seq2SeqDataset):
+
+    def __init__(self, file_src, file_tgt, batch_size, tokenizer, max_len, max_len_b, short_sampling_prob=0.1, sent_reverse_order=False, bi_uni_pipeline=[]):
+        super().__init__(file_src, file_tgt, batch_size, tokenizer, max_len)
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+        self.short_sampling_prob = short_sampling_prob
+        self.bi_uni_pipeline = bi_uni_pipeline
+        self.batch_size = batch_size
+        self.sent_reverse_order = sent_reverse_order
+        self.max_len_a = max_len - max_len_b - 3 # leave 3 tokens for [CLS] [SEP] symbol
+
+        self.cached = False
+        if os.path.exists("cached_dataset.pl") :
+            self.cached = True
+        
+        # if cached, load cache
+        if self.cached:
+            with open("cached_dataset.pl", "rb") as f:
+                self.ex_list = pickle.load(f)
+        else:
+            # read the file into memory
+            self.ex_list = []
+            with open(file_src, "r", encoding="utf-8") as f_src, open(file_tgt, "r", encoding="utf-8") as f_tgt:
+                for src, tgt in zip(tqdm(f_src.readlines()), tqdm(f_tgt.readlines())):
+                    docs = [json.loads(x) for x in src.strip().strip("\n").split("\t")]
+                    titles = [x["title"]  for x in docs]
+                    abstracts = [x["abstract"] for x in docs]
+                    keywords = tgt.strip().strip("\n").split("\t")
+                    sents = []
+                    for piece in abstracts:
+                        piece_sents = sent_tokenize(piece)
+                        sents.extend(piece_sents)
+                    
+
+                    src_tk = self.tokenizer.tokenize(" ".join(titles))
+                    sent_idx = 0
+                    while sent_idx < len(sents) and len(src_tk) + len(self.tokenizer.tokenize(" ".join(sents[sent_idx]))) <= self.max_len_a:
+                        src_tk += self.tokenizer.tokenize(" ".join(sents[sent_idx]))
+                        sent_idx += 1
+
+                    for kk in keywords:
+                        tgt_tk = tokenizer.tokenize(kk)
+                        if len(src_tk) > 0 and len(tgt_tk) > 0:
+                            self.ex_list.append((src_tk, tgt_tk))
+            
+            with open("cached_dataset.pl", "wb") as f:
+                pickle.dump(self.ex_list, f)
+
+        
+        print('Load {0} documents'.format(len(self.ex_list)))
+        # caculate statistics
+        src_tk_lens = [len(x[0]) for x in self.ex_list]
+        tgt_tk_lens = [len(x[1]) for x in self.ex_list]
+        print("Statistics:\nsrc_tokens: max:{0}  min:{1}  avg:{2}\ntgt_tokens: max:{3} min:{4} avg:{5}".format(max(src_tk_lens), min(src_tk_lens), sum(src_tk_lens)/len(self.ex_list), max(tgt_tk_lens), min(tgt_tk_lens), sum(tgt_tk_lens)/len(tgt_tk_lens)))
 
 class SingleTrainingDataset(Seq2SeqDataset):
     
@@ -415,6 +472,58 @@ class ScoreDataset(Seq2SeqDataset):
     def stem(self, x):
         return " ".join([self.stemmer.stem(w) for w in word_tokenize(x)])
 
+
+class ScoreRougeDataset(Seq2SeqDataset):
+
+    def __init__(self, file_src, file_tgt, batch_size, tokenizer, max_len, short_sampling_prob=0.1, sent_reverse_order=False, bi_uni_pipeline=[]):
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+        self.short_sampling_prob = short_sampling_prob
+        self.bi_uni_pipeline = bi_uni_pipeline
+        self.batch_size = batch_size
+        self.sent_reverse_order = sent_reverse_order
+        self.cached = False
+        self.scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
+
+        if os.path.exists("cached_dataset.pl"):
+            self.cached = True
+        
+        if self.cached:
+            with open("cached_dataset.pl", "rb") as f:
+                self.ex_list = pickle.load(f)
+        
+        else:
+            self.ex_list = []
+            with open(file_src, "r", encoding="utf-8") as f_src, open(file_tgt, "r", encoding="utf-8") as f_tgt:
+                for src, tgt in zip(tqdm(f_src.readlines()), tqdm(f_tgt.readlines())):
+                    docs = [json.loads(x) for x in src.strip().strip("\n").split("\t")]
+                    titles = [x["title"] for x in docs]
+                    abstracts = [x["abstract"] for x in docs]
+                    keywords = list(tgt.strip().split("\t"))
+                    sents = []
+                    for piece in abstracts:
+                        piece_sents = sent_tokenize(piece)
+                        sents.extend(piece_sents)
+                    
+                    title_concat = " ".join(titles)
+                    for sent in sents:
+                        src_seq = title_concat 
+                        tgt_seq = sent
+                        label_score = self.get_score(src_seq, tgt_seq)
+                        src_tk = self.tokenizer.tokenize(src_seq)
+                        tgt_tk = self.tokenizer.tokenize(tgt_seq)
+                        if len(src_tk) > 0 and len(tgt_tk) > 0:
+                            self.ex_list.append((src_tk, tgt_tk, label_score))
+    
+    def get_score(self, sent, keywords):
+        scores = 0
+        for kk in keywords:
+            score_t = self.scorer.score(sent, kk)
+            score_t = score_t['rougeL'].fmeasure
+            scores += score_t
+        scores = scores*1.0000 / 10
+
+        return scores
 
 
 class ScoreEvalDataset(Seq2SeqDataset):

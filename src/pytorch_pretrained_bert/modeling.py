@@ -2209,7 +2209,7 @@ class BertForSentenceRanker(BertForSequenceClassification):
         self.num_labels = num_labels
         self.bert = BertModel(config)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
-        self.classifier = nn.Linear(config.hidden_size, num_labels)
+        self.classifier = nn.Linear(config.hidden_size, 1)
         self.apply(self.init_bert_weights)
 
     def forward(self, input_ids, token_type_ids=None, attention_mask=None, labels=None, mask_qkv=None, task_idx=None):
@@ -2221,7 +2221,7 @@ class BertForSentenceRanker(BertForSequenceClassification):
 
         if labels is not None:
             if labels.dtype == torch.long:
-                loss_fct = CrossEntropyLoss()
+                loss_fct = MSELoss()
                 loss = loss_fct(
                     logits.view(-1, self.num_labels), labels.view(-1))
             elif labels.dtype == torch.half or labels.dtype == torch.float:
