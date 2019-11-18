@@ -147,7 +147,7 @@ def main():
     parser.add_argument('--do_predict', action='store_true', help="do_predict")
     parser.add_argument("--do_evaluate", action="store_true", help="caculate the scores if have label file")
     parser.add_argument("--label_file", type=str, default="")
-    parser.add_argument("--experiment", type=str, default="full", help="full/title/title-l1/hierachical")
+    parser.add_argument("--experiment", type=str, default="full", help="full/title/title-l1/hierachical/title-first")
 
     # ranker parameters
     parser.add_argument("--ranker_recover_path", type=str, help="ranker model for extract sentence")
@@ -230,6 +230,9 @@ def main():
                 input_lines = EvalDataset(args.input_file, args.experiment).proc()
             elif args.experiment == "single":
                 input_lines, map_dict = EvalDataset(args.input_file, args.experiment).proc()
+            elif args.experiment == "title-first":
+                input_lines = EvalDataset(args.input_file, args.experiment, tokenizer, args.max_seq_length, args.max_seq_length).proc()
+
             elif args.experiment == "heirachical":
                 logger.info("***** Recover rank model: %s *****", args.ranker_recover_path)
                 # extract sentences before load data

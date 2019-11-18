@@ -362,9 +362,11 @@ class SingleTrainingDataset(Seq2SeqDataset):
         print("Statistics:\nsrc_tokens: max:{0}  min:{1}  avg:{2}\ntgt_tokens: max:{3} min:{4} avg:{5}".format(max(src_tk_lens), min(src_tk_lens), sum(src_tk_lens)/len(self.ex_list), max(tgt_tk_lens), min(tgt_tk_lens), sum(tgt_tk_lens)/len(tgt_tk_lens)))
 
 class EvalDataset(object):
-    def __init__(self,input_file, experiment):
+    def __init__(self,input_file, experiment, tokenizer=None, max_seq_length=None, max_tgt_length=None):
         self.input_file = input_file
         self.experiment = experiment
+        self.max_seq_length = max_seq_length
+        self.max_tgt_length = max_tgt_length
     
     def load_full(self, x):
         return x["title"] + " " + x["abstract"]
@@ -391,7 +393,31 @@ class EvalDataset(object):
                     docs = [load_func(json.loads(doc)) for doc in line]
                     input_lines.append(" ".join(docs))
             return input_lines
+        elif self.experiment == "title-first":
+            max_len = self.max_seq_length - self.max_tgt_length - 3
+            with open(self.input_file) as fin:
+                input_lines = []
+                for line in tqdm(fin.readlines()):
+                    line = line.strip().split("\t")
+                    docs = [json.loads(doc) for doc in line]
+                    titles = [doc["title"] for doc in docs]
+                    abstracts = [doc["abstract"] for doc in docs]
+                    titles_seq = " ".join(titles)
+                    sents = []
 
+                    for piece in abstracts:
+                        piece_sents = sent_tokenize(piece)
+                        sents.extend(piece_sents)
+                    input_line = titles_seq
+                    input_line_tk = self.tokenizer.tokenize(titles_seq)
+                    sents_idx = 0
+                    while sents_idx < len(sents) and len(input_line_tk) + len(self.tokenizer.tokenize(sents[sent_idx])) <= self.max_len :
+                        input_line += sents[sents_idx]
+                        input_line_tk += self.tokenizer.tokenize(sents[sents_idx])
+                        sents_idx += 1
+                    input_lines.append(input_line)
+                return input_lines
+                    
         elif self.experiment == "single":
             clu_cnt = 0
             glo_cnt = 0
