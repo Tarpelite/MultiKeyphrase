@@ -22,16 +22,16 @@ from multiprocessing import cpu_count, Pool
 
 def batch_list_to_batch_tensors(batch):
     batch_tensors = []
-    # print("bacth")
-    # print(len(batch))
-    # print(len(batch[0]))
+    print("bacth")
+    print(len(batch))
+    print(len(batch[0]))
 
     for x in zip(*batch):
         if x[0] is None:
             batch_tensors.append(None)
         elif isinstance(x[0], torch.Tensor):
             batch_tensors.append(torch.stack(x))
-        elif len(x[0]) > 0:
+        elif isinstance(x[0], list):
             if isinstance(x[0][0], float):
                 batch_tensors.append(torch.tensor(x, dtype=torch.float))
             else:
