@@ -691,7 +691,7 @@ class Preprocess4Seq2cls(Pipeline):
     """ Pre-processing steps for pretraining transformer """
 
     def __init__(self, max_pred, mask_prob, vocab_words, indexer, max_len=512, skipgram_prb=0, skipgram_size=0, block_mask=False, mask_whole_word=False, new_segment_ids=False, truncate_config={}, mask_source_words=False, mode="s2s", has_oracle=False, num_qkv=0, s2s_special_token=False, s2s_add_segment=False, s2s_share_segment=False, pos_shift=False, eval=False):
-        super().__init__()
+        # super().__init__()
         self.max_len = max_len
         self.max_pred = max_pred  # max tokens of prediction
         self.mask_prob = mask_prob  # masking probability
@@ -719,13 +719,10 @@ class Preprocess4Seq2cls(Pipeline):
         self.s2s_add_segment = s2s_add_segment
         self.s2s_share_segment = s2s_share_segment
         self.pos_shift = pos_shift
-        self.eval = False
-
+        self.eval = eval
+    
     def __call__(self, instance):
-        if not self.eval:
-            tokens_a, tokens_b, label = instance
-        else:
-            tokens_a, tokens_b = instance
+        tokens_a, tokens_b = instance
 
         if self.pos_shift:
             tokens_b = ['[S2S_SOS]'] + tokens_b
@@ -733,6 +730,7 @@ class Preprocess4Seq2cls(Pipeline):
         # -3  for special tokens [CLS], [SEP], [SEP]
         num_truncated_a, _ = truncate_tokens_pair(tokens_a, tokens_b, self.max_len - 3, max_len_a=self.max_len_a,
                                                   max_len_b=self.max_len_b, trunc_seg=self.trunc_seg, always_truncate_tail=self.always_truncate_tail)
+
 
         # Add Special Tokens
         if self.s2s_special_token:
@@ -757,6 +755,33 @@ class Preprocess4Seq2cls(Pipeline):
                 segment_ids = [2] * (len(tokens))
         else:
             segment_ids = [0]*(len(tokens_a)+2) + [1]*(len(tokens_b)+1)
+        
+        # renew segment ids for every doc
+        # id 5 for tokens_b and id num 6+ for doc_cnt
+
+        reverse = True
+
+        new_segment_ids = [4]
+        i = 0
+        while i < len(tokens_a):
+            if tokens[i] == '[SEP]':
+                reverse = not reverse
+            if reverse:
+                new_segment_ids.append(4)
+            else:
+                new_segment_ids.append(3)
+            i += 1
+        
+        if reverse:
+            new_segment_ids.append(4)
+        else:
+            new_segment_ids.append(3)
+
+        new_segment_ids += [5] * (len(tokens_b)+1)
+        
+        assert len(new_segment_ids) == len(segment_ids)
+
+        segment_ids = new_segment_ids
 
         if self.pos_shift:
             n_pred = min(self.max_pred, len(tokens_b))
@@ -897,8 +922,7 @@ class Preprocess4Seq2cls(Pipeline):
             return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids,
                     masked_pos, masked_weights, -1, self.task_idx,
                     oracle_pos, oracle_weights, oracle_labels)
-        if not self.eval:
-            return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx, label) 
+
         return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx)
 
 
