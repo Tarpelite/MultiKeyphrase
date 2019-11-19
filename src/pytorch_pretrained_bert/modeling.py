@@ -2219,11 +2219,11 @@ class BertForSentenceRanker(BertForSequenceClassification):
         logits = self.classifier(pooled_output)
 
         if labels is not None:
-            if labels.dtype == torch.long:
+            if labels.dtype == torch.long or labels.dtype == torch.float:
                 loss_fct = MSELoss()
                 loss = loss_fct(
-                    logits.view(-1, self.num_labels), labels.view(-1))
-            elif labels.dtype == torch.half or labels.dtype == torch.float:
+                    logits.view(-1), labels.view(-1))
+            elif labels.dtype == torch.half :
                 loss_fct = MSELoss()
                 loss = loss_fct(logits.view(-1), labels.view(-1))
                 print('unkown labels.dtype')
