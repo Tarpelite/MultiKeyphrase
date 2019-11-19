@@ -24,7 +24,7 @@ from pytorch_pretrained_bert.optimization import BertAdam, warmup_linear
 
 from nn.data_parallel import DataParallelImbalance
 import biunilm.seq2seq_loader as seq2seq_loader
-from utils_concat import ConcatDataset, TitleDataset, TitleLead1Dataset, SingleTrainingDataset, TitleFirstDataset
+from utils_concat import ConcatDataset, TitleDataset, TitleLead1Dataset, SingleTrainingDataset, TitleFirstDataset, SegSepDataset, Preprocess4SegSep
 import torch.distributed as dist
 
 
@@ -215,7 +215,7 @@ def main():
     parser.add_argument('--pos_shift', action='store_true',
                         help="Using position shift for fine-tuning.")
     parser.add_argument("--experiment", type=str, default="full",
-                        help="1.full (title + full abstract) 2.title (only title), 3.title-l1 (title + l1), 4. single")
+                        help="1.full (title + full abstract) 2.title (only title), 3.title-l1 (title + l1), 4. single 5. segsep")
 
     args = parser.parse_args()
 
@@ -274,7 +274,7 @@ def main():
         dist.barrier()
     
     DatasetFunc = ConcatDataset
-
+    processor = seq2seq_loader.Preprocess4Seq2seq
     if args.experiment == "title":
         DatasetFunc = TitleDataset
     elif args.experiment == "title-l1":
@@ -283,11 +283,14 @@ def main():
         DatasetFunc = SingleTrainingDataset
     elif args.experiment == "title-first":
         DatasetFunc = TitleFirstDataset
+    elif args.experiment == "segsep":
+        DatasetFunc = SegSepDataset
+        preprocessor = Preprocess4SegSep
     
 
     if args.do_train:
         print("Loading Train Dataset", args.data_dir)
-        bi_uni_pipeline = [seq2seq_loader.Preprocess4Seq2seq(args.max_pred, args.mask_prob, list(tokenizer.vocab.keys(
+        bi_uni_pipeline = [preprocessor(args.max_pred, args.mask_prob, list(tokenizer.vocab.keys(
         )), tokenizer.convert_tokens_to_ids, args.max_seq_length, new_segment_ids=args.new_segment_ids, truncate_config={'max_len_a': args.max_len_a, 'max_len_b': args.max_len_b, 'trunc_seg': args.trunc_seg, 'always_truncate_tail': args.always_truncate_tail}, mask_source_words=args.mask_source_words, skipgram_prb=args.skipgram_prb, skipgram_size=args.skipgram_size, mask_whole_word=args.mask_whole_word, mode="s2s", has_oracle=args.has_sentence_oracle, num_qkv=args.num_qkv, s2s_special_token=args.s2s_special_token, s2s_add_segment=args.s2s_add_segment, s2s_share_segment=args.s2s_share_segment, pos_shift=args.pos_shift)]
         file_oracle = None
         if args.has_sentence_oracle:
