@@ -25,23 +25,19 @@ def batch_list_to_batch_tensors(batch):
     # print("bacth")
     # print(len(batch))  # == 8
     # print(len(batch[0]))# == 10
-    print("bacth label raw")
-    print(batch[0][-1])
+    # print("bacth label raw")
+    # print(batch[0][-1])
     for x in zip(*batch):
-        print("check the x ")
-        # print(torch.tensor(x).shape)
-        print(x)
+        # print("check the x ")
+        # # print(torch.tensor(x).shape)
+        # print(x)
         if x[0] is None:
             batch_tensors.append(None)
         elif isinstance(x[0], torch.Tensor):
             batch_tensors.append(torch.stack(x))
-        elif isinstance(x[0], list):
-            if isinstance(x[0][0], float):
-                print("show me the x")
-                print(x)
-                batch_tensors.append(torch.tensor(x))
-            else:
-                batch_tensors.append(torch.tensor(x, dtype=torch.long))
+        elif isinstance(x[0], float):
+            # print("show me the x")
+            batch_tensors.append(torch.tensor(x))
         else:
             batch_tensors.append(torch.tensor(x, dtype=torch.long))
     return batch_tensors
