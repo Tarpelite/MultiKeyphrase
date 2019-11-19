@@ -874,7 +874,7 @@ class Preprocess4Seq2cls(Preprocess4Seq2seq):
 
 
 
-class SegSepDataset(seq2seq.Dataset):
+class SegSepDataset(Seq2SeqDataset):
     def __init__(self, file_src, file_tgt, batch_size, tokenizer, max_len, short_sampling_prob=0.1, sent_reverse_order=False, bi_uni_pipeline=[]):
         self.tokenizer = tokenizer
         self.max_len = max_len
