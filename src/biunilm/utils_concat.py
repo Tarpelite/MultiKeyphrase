@@ -22,9 +22,10 @@ from multiprocessing import cpu_count, Pool
 
 def batch_list_to_batch_tensors(batch):
     batch_tensors = []
+    print("bacth")
     print(len(batch))
     print(len(len(batch[-1])))
-    
+
     for x in zip(*batch):
         if x[0] is None:
             batch_tensors.append(None)
