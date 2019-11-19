@@ -95,6 +95,7 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
         instance = proc(instance)
         print("check label x ")
         print(instance[-1])
+        print(type(instance[-1]))
         return instance
 
     def __iter__(self):  # iterator to load data
