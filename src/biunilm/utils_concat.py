@@ -722,7 +722,9 @@ class Preprocess4Seq2cls(Pipeline):
         self.eval = eval
     
     def __call__(self, instance):
-        tokens_a, tokens_b = instance
+        print("instance len")
+        print(len(instance))
+        tokens_a, tokens_b,label = instance
 
         if self.pos_shift:
             tokens_b = ['[S2S_SOS]'] + tokens_b
@@ -923,7 +925,7 @@ class Preprocess4Seq2cls(Pipeline):
                     masked_pos, masked_weights, -1, self.task_idx,
                     oracle_pos, oracle_weights, oracle_labels)
 
-        return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx)
+        return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx, label)
 
 
 
