@@ -687,10 +687,11 @@ class ScoreEvalDataset(Seq2SeqDataset):
 
 
 
-class Preprocess4Seq2cls(Preprocess4Seq2seq):
+class Preprocess4Seq2seq(Pipeline):
+    """ Pre-processing steps for pretraining transformer """
 
     def __init__(self, max_pred, mask_prob, vocab_words, indexer, max_len=512, skipgram_prb=0, skipgram_size=0, block_mask=False, mask_whole_word=False, new_segment_ids=False, truncate_config={}, mask_source_words=False, mode="s2s", has_oracle=False, num_qkv=0, s2s_special_token=False, s2s_add_segment=False, s2s_share_segment=False, pos_shift=False, eval=False):
-        # super().__init__()
+        super().__init__()
         self.max_len = max_len
         self.max_pred = max_pred  # max tokens of prediction
         self.mask_prob = mask_prob  # masking probability
@@ -718,19 +719,20 @@ class Preprocess4Seq2cls(Preprocess4Seq2seq):
         self.s2s_add_segment = s2s_add_segment
         self.s2s_share_segment = s2s_share_segment
         self.pos_shift = pos_shift
-        self.eval = eval
+        self.eval = False
+
     def __call__(self, instance):
         if not self.eval:
             tokens_a, tokens_b, label = instance
         else:
             tokens_a, tokens_b = instance
+
         if self.pos_shift:
             tokens_b = ['[S2S_SOS]'] + tokens_b
 
         # -3  for special tokens [CLS], [SEP], [SEP]
         num_truncated_a, _ = truncate_tokens_pair(tokens_a, tokens_b, self.max_len - 3, max_len_a=self.max_len_a,
                                                   max_len_b=self.max_len_b, trunc_seg=self.trunc_seg, always_truncate_tail=self.always_truncate_tail)
-
 
         # Add Special Tokens
         if self.s2s_special_token:
@@ -895,9 +897,9 @@ class Preprocess4Seq2cls(Preprocess4Seq2seq):
             return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids,
                     masked_pos, masked_weights, -1, self.task_idx,
                     oracle_pos, oracle_weights, oracle_labels)
-        if self.eval:
-            return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx)
-        return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx, label)
+        if  not self.eval:
+            return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx, label
+        return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx)
 
 
 
@@ -1037,7 +1039,7 @@ class Preprocess4SegSep(Preprocess4Seq2seq):
             new_segment_ids.append(4)
         else:
             new_segment_ids.append(3)
-            
+
         new_segment_ids += [5] * (len(tokens_b)+1)
         
         assert len(new_segment_ids) == len(segment_ids)
