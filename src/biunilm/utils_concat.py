@@ -17,6 +17,7 @@ import os
 from random import randint, shuffle, choice
 from random import random as rand
 from rouge_score import rouge_scorer
+from multiprocessing import cpu_count, Pool
 
 class InputExample(object):
     """
@@ -522,27 +523,17 @@ class ScoreRougeDataset(Seq2SeqDataset):
         
         else:
             self.ex_list = []
+            instances = []
+            results = []
             with open(file_src, "r", encoding="utf-8") as f_src, open(file_tgt, "r", encoding="utf-8") as f_tgt:
-                for src, tgt in zip(tqdm(f_src.readlines()), tqdm(f_tgt.readlines())):
-                    docs = [json.loads(x) for x in src.strip().strip("\n").split("\t")]
-                    titles = [x["title"] for x in docs]
-                    abstracts = [x["abstract"] for x in docs]
-                    keywords = list(tgt.strip().split("\t"))
-                    sents = []
-                    for piece in abstracts:
-                        piece_sents = sent_tokenize(piece)
-                        sents.extend(piece_sents)
+                for src, tgt in zip(f_src.readlines(), f_tgt.readlines()):
+                    instances.append([src, tgt])
+            with Pool(cpu_count()) as p:
+                results = list(tqdm(p.imap(self.solve, instances), total=len(instances)))
+            for res in results:
+                if len(res) > 0:
+                    self.ex_list.extend(res)        
                     
-                    title_concat = " ".join(titles)
-                    for sent in sents:
-                        src_seq = title_concat 
-                        tgt_seq = sent
-                        label_score = self.get_score(src_seq, tgt_seq)
-                        src_tk = self.tokenizer.tokenize(src_seq)
-                        tgt_tk = self.tokenizer.tokenize(tgt_seq)
-                        if len(src_tk) > 0 and len(tgt_tk) > 0:
-                            self.ex_list.append((src_tk, tgt_tk, label_score))
-    
     def get_score(self, sent, keywords):
         scores = 0
         for kk in keywords:
@@ -552,6 +543,30 @@ class ScoreRougeDataset(Seq2SeqDataset):
         scores = scores*1.0000 / 10
 
         return scores
+    
+    def solve(self, instance):
+        results = []
+        src, tgt = instance
+        docs = [json.loads(x) for x in src.strip().strip("\n").split("\t")]
+        titles = [x["title"] for x in docs]
+        abstracts = [x["abstract"] for x in docs]
+        keywords = list(tgt.strip().split("\t"))
+        sents = []
+        for piece in abstracts:
+            piece_sents = sent_tokenize(piece)
+            sents.extend(piece_sents)
+        
+        title_concat = " ".join(titles)
+        for sent in sents:
+            src_seq = title_concat 
+            tgt_seq = sent
+            label_score = self.get_score(src_seq, tgt_seq)
+            src_tk = self.tokenizer.tokenize(src_seq)
+            tgt_tk = self.tokenizer.tokenize(tgt_seq)
+            if len(src_tk) > 0 and len(tgt_tk) > 0:
+                results.append((src_tk, tgt_tk, label_score))
+        return results
+
 
 
 class ScoreEvalDataset(Seq2SeqDataset):
