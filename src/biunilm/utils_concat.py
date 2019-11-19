@@ -513,11 +513,11 @@ class ScoreRougeDataset(Seq2SeqDataset):
         self.cached = False
         self.scorer = rouge_scorer.RougeScorer(['rougeL'], use_stemmer=True)
 
-        if os.path.exists("cached_dataset.pl"):
+        if os.path.exists("cached_rank_dataset.pl"):
             self.cached = True
         
         if self.cached:
-            with open("cached_dataset.pl", "rb") as f:
+            with open("cached_rank_dataset.pl", "rb") as f:
                 self.ex_list = pickle.load(f)
         
         else:
