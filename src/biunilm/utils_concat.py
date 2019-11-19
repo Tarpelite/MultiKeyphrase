@@ -690,7 +690,34 @@ class ScoreEvalDataset(Seq2SeqDataset):
 class Preprocess4Seq2cls(Preprocess4Seq2seq):
 
     def __init__(self, max_pred, mask_prob, vocab_words, indexer, max_len=512, skipgram_prb=0, skipgram_size=0, block_mask=False, mask_whole_word=False, new_segment_ids=False, truncate_config={}, mask_source_words=False, mode="s2s", has_oracle=False, num_qkv=0, s2s_special_token=False, s2s_add_segment=False, s2s_share_segment=False, pos_shift=False, eval=False):
-        super().__init__(max_pred, mask_prob, vocab_words, indexer, max_len=512, skipgram_prb=0, skipgram_size=0, block_mask=False, mask_whole_word=False, new_segment_ids=False, truncate_config={}, mask_source_words=False, mode="s2s", has_oracle=False, num_qkv=0, s2s_special_token=False, s2s_add_segment=False, s2s_share_segment=False, pos_shift=False)
+        super().__init__()
+        self.max_len = max_len
+        self.max_pred = max_pred  # max tokens of prediction
+        self.mask_prob = mask_prob  # masking probability
+        self.vocab_words = vocab_words  # vocabulary (sub)words
+        self.indexer = indexer  # function from token to token index
+        self.max_len = max_len
+        self._tril_matrix = torch.tril(torch.ones(
+            (max_len, max_len), dtype=torch.long))
+        self.skipgram_prb = skipgram_prb
+        self.skipgram_size = skipgram_size
+        self.mask_whole_word = mask_whole_word
+        self.new_segment_ids = new_segment_ids
+        self.always_truncate_tail = truncate_config.get(
+            'always_truncate_tail', False)
+        self.max_len_a = truncate_config.get('max_len_a', None)
+        self.max_len_b = truncate_config.get('max_len_b', None)
+        self.trunc_seg = truncate_config.get('trunc_seg', None)
+        self.task_idx = 3   # relax projection layer for different tasks
+        self.mask_source_words = mask_source_words
+        assert mode in ("s2s", "l2r")
+        self.mode = mode
+        self.has_oracle = has_oracle
+        self.num_qkv = num_qkv
+        self.s2s_special_token = s2s_special_token
+        self.s2s_add_segment = s2s_add_segment
+        self.s2s_share_segment = s2s_share_segment
+        self.pos_shift = pos_shift
         self.eval = eval
     def __call__(self, instance):
         if not self.eval:
@@ -925,7 +952,34 @@ class SegSepDataset(Seq2SeqDataset):
 class Preprocess4SegSep(Preprocess4Seq2seq):
 
     def __init__(self, max_pred, mask_prob, vocab_words, indexer, max_len=512, skipgram_prb=0, skipgram_size=0, block_mask=False, mask_whole_word=False, new_segment_ids=False, truncate_config={}, mask_source_words=False, mode="s2s", has_oracle=False, num_qkv=0, s2s_special_token=False, s2s_add_segment=False, s2s_share_segment=False, pos_shift=False, eval=False):
-        super().__init__(max_pred, mask_prob, vocab_words, indexer, max_len=512, skipgram_prb=0, skipgram_size=0, block_mask=False, mask_whole_word=False, new_segment_ids=False, truncate_config={}, mask_source_words=False, mode="s2s", has_oracle=False, num_qkv=0, s2s_special_token=False, s2s_add_segment=False, s2s_share_segment=False, pos_shift=False)
+        super().__init__()
+        self.max_len = max_len
+        self.max_pred = max_pred  # max tokens of prediction
+        self.mask_prob = mask_prob  # masking probability
+        self.vocab_words = vocab_words  # vocabulary (sub)words
+        self.indexer = indexer  # function from token to token index
+        self.max_len = max_len
+        self._tril_matrix = torch.tril(torch.ones(
+            (max_len, max_len), dtype=torch.long))
+        self.skipgram_prb = skipgram_prb
+        self.skipgram_size = skipgram_size
+        self.mask_whole_word = mask_whole_word
+        self.new_segment_ids = new_segment_ids
+        self.always_truncate_tail = truncate_config.get(
+            'always_truncate_tail', False)
+        self.max_len_a = truncate_config.get('max_len_a', None)
+        self.max_len_b = truncate_config.get('max_len_b', None)
+        self.trunc_seg = truncate_config.get('trunc_seg', None)
+        self.task_idx = 3   # relax projection layer for different tasks
+        self.mask_source_words = mask_source_words
+        assert mode in ("s2s", "l2r")
+        self.mode = mode
+        self.has_oracle = has_oracle
+        self.num_qkv = num_qkv
+        self.s2s_special_token = s2s_special_token
+        self.s2s_add_segment = s2s_add_segment
+        self.s2s_share_segment = s2s_share_segment
+        self.pos_shift = pos_shift
         self.eval = eval
     
     def __call__(self, instance):
