@@ -314,7 +314,7 @@ def main():
     type_vocab_size = 6 + \
         (1 if args.s2s_add_segment else 0) if args.new_segment_ids else 2
     
-    print(type_vocab_size)
+    # print(type_vocab_size)
     num_sentlvl_labels = 2 if args.has_sentence_oracle else 0
     relax_projection = 4 if args.relax_projection else 0
     if args.local_rank not in (-1, 0):
@@ -436,10 +436,10 @@ def main():
                     input_ids, segment_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next, task_idx, labels = batch
                     oracle_pos, oracle_weights, oracle_labels = None, None, None
                 
-                print("input_ids")
-                print(input_ids)
-                print("segment_ids")
-                print(segment_ids)
+                # print("input_ids")
+                # print(input_ids)
+                # print("segment_ids")
+                # print(segment_ids)
 
                 try:
                     loss = model(input_ids, segment_ids, input_mask, labels, task_idx=task_idx, mask_qkv=mask_qkv)

@@ -2218,6 +2218,8 @@ class BertForSentenceRanker(BertForSequenceClassification):
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
 
+        print("OK !")
+
         if labels is not None:
             if labels.dtype == torch.long or labels.dtype == torch.float:
                 loss_fct = MSELoss()
