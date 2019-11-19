@@ -93,9 +93,7 @@ class Seq2SeqDataset(torch.utils.data.Dataset):
         instance = self.ex_list[idx]
         proc = choice(self.bi_uni_pipeline)
         instance = proc(instance)
-        print("check label x ")
-        print(instance[-1])
-        print(type(instance[-1]))
+        # print(type(instance[-1]))
         return instance
 
     def __iter__(self):  # iterator to load data

@@ -29,8 +29,10 @@ def batch_list_to_batch_tensors(batch):
         elif isinstance(x[0], torch.Tensor):
             batch_tensors.append(torch.stack(x))
         else:
-            if isinstance(x, float):
-                batch_tensors.append(torch.tensor(x, dtype=torch.float))
+            if isinstance(x, list):
+                if isinstance(x[0], list):
+                    if isinstance(x[0][0], float):
+                        batch_tensors.append(torch.tensor(x, dtype=torch.float))
             else:
                 batch_tensors.append(torch.tensor(x, dtype=torch.long))
     return batch_tensors
