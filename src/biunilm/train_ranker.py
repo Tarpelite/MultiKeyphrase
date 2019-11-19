@@ -24,7 +24,7 @@ from pytorch_pretrained_bert.optimization import BertAdam, warmup_linear
 
 from nn.data_parallel import DataParallelImbalance
 import biunilm.seq2seq_loader as seq2seq_loader
-from utils_concat import ConcatDataset, TitleDataset, TitleLead1Dataset, SingleTrainingDataset, ScoreDataset, Preprocess4Seq2cl, ScoreRougeDataset
+from utils_concat import ConcatDataset, TitleDataset, TitleLead1Dataset, SingleTrainingDataset, ScoreDataset, Preprocess4Seq2cls, ScoreRougeDataset
 import torch.distributed as dist
 
 
