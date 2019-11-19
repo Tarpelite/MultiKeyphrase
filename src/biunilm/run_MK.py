@@ -285,7 +285,7 @@ def main():
         DatasetFunc = TitleFirstDataset
     elif args.experiment == "segsep":
         DatasetFunc = SegSepDataset
-        preprocessor = Preprocess4SegSep
+        processor = Preprocess4SegSep
     
 
     if args.do_train:
