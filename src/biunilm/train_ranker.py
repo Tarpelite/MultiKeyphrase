@@ -433,10 +433,12 @@ def main():
                 else:
                     input_ids, segment_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next, task_idx, labels = batch
                     oracle_pos, oracle_weights, oracle_labels = None, None, None
-                # print(type(labels))
-                # print(labels[0].dtype)
-                loss = model(input_ids, segment_ids, input_mask, labels, task_idx=task_idx, mask_qkv=mask_qkv)
-                
+                print(type(labels))
+                print(labels[0].dtype)
+                try:
+                    loss = model(input_ids, segment_ids, input_mask, labels, task_idx=task_idx, mask_qkv=mask_qkv)
+                except Exception as e:
+                    print(e)
                 if n_gpu > 1:    # mean() to average on multi-gpu.
                     loss = loss.mean()
 
