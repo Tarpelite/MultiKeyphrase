@@ -313,6 +313,8 @@ def main():
     cls_num_labels = 2
     type_vocab_size = 6 + \
         (1 if args.s2s_add_segment else 0) if args.new_segment_ids else 2
+    
+    print(type_vocab_size)
     num_sentlvl_labels = 2 if args.has_sentence_oracle else 0
     relax_projection = 4 if args.relax_projection else 0
     if args.local_rank not in (-1, 0):
