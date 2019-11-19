@@ -722,8 +722,8 @@ class Preprocess4Seq2cls(Pipeline):
         self.eval = eval
     
     def __call__(self, instance):
-        print("instance len")
-        print(len(instance))
+        # print("instance len")
+        # print(len(instance))
         tokens_a, tokens_b,label = instance
 
         if self.pos_shift:
@@ -757,33 +757,6 @@ class Preprocess4Seq2cls(Pipeline):
                 segment_ids = [2] * (len(tokens))
         else:
             segment_ids = [0]*(len(tokens_a)+2) + [1]*(len(tokens_b)+1)
-        
-        # renew segment ids for every doc
-        # id 5 for tokens_b and id num 6+ for doc_cnt
-
-        reverse = True
-
-        new_segment_ids = [4]
-        i = 0
-        while i < len(tokens_a):
-            if tokens[i] == '[SEP]':
-                reverse = not reverse
-            if reverse:
-                new_segment_ids.append(4)
-            else:
-                new_segment_ids.append(3)
-            i += 1
-        
-        if reverse:
-            new_segment_ids.append(4)
-        else:
-            new_segment_ids.append(3)
-
-        new_segment_ids += [5] * (len(tokens_b)+1)
-        
-        assert len(new_segment_ids) == len(segment_ids)
-
-        segment_ids = new_segment_ids
 
         if self.pos_shift:
             n_pred = min(self.max_pred, len(tokens_b))
@@ -924,6 +897,7 @@ class Preprocess4Seq2cls(Pipeline):
             return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids,
                     masked_pos, masked_weights, -1, self.task_idx,
                     oracle_pos, oracle_weights, oracle_labels)
+        
 
         return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx, label)
 
