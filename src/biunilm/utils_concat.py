@@ -29,7 +29,7 @@ def batch_list_to_batch_tensors(batch):
     print(batch[0][-1])
     for x in zip(*batch):
         print("check the x ")
-        print(torch.tensor(x).shape)
+        # print(torch.tensor(x).shape)
         print(x)
         if x[0] is None:
             batch_tensors.append(None)
