@@ -22,6 +22,7 @@ from multiprocessing import cpu_count, Pool
 
 def batch_list_to_batch_tensors(batch):
     batch_tensors = []
+
     for x in zip(*batch):
         if x[0] is None:
             batch_tensors.append(None)
@@ -551,6 +552,8 @@ class ScoreRougeDataset(Seq2SeqDataset):
 
             with open("cached_rank_dataset.pl", "wb") as f:
                 pickle.dump(self.ex_list, f)   
+        
+        test_ins = self.ex_list
                     
     def get_score(self, sent, keywords):
         scores = 0
