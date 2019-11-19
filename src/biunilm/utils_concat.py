@@ -1020,21 +1020,29 @@ class Preprocess4SegSep(Preprocess4Seq2seq):
         # renew segment ids for every doc
         # id 5 for tokens_b and id num 6+ for doc_cnt
 
-        # doc_cnt = 6
-        # new_segment_ids = [6]
-        # i = 0
-        # while i < len(tokens_a):
-        #     if tokens[i] == '[SEP]':
-        #         doc_cnt += 1
-        #     new_segment_ids.append(doc_cnt)
-        #     i += 1
-        
-        # new_segment_ids.append(doc_cnt)
-        # new_segment_ids += [5] * (len(tokens_b)+1)
-        
-        # assert len(new_segment_ids) == len(segment_ids)
+        reverse = True
 
-        # segment_ids = new_segment_ids
+        new_segment_ids = [4]
+        i = 0
+        while i < len(tokens_a):
+            if tokens[i] == '[SEP]':
+                reverse = not reverse
+            if reverse:
+                new_segment_ids.append(4)
+            else:
+                new_segment_ids.append(3)
+            i += 1
+        
+        if reverse:
+            new_segment_ids.append(4)
+        else:
+            new_segment_ids.append(3)
+            
+        new_segment_ids += [5] * (len(tokens_b)+1)
+        
+        assert len(new_segment_ids) == len(segment_ids)
+
+        segment_ids = new_segment_ids
 
         if self.pos_shift:
             n_pred = min(self.max_pred, len(tokens_b))
