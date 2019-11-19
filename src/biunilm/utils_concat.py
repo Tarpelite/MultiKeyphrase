@@ -687,7 +687,7 @@ class ScoreEvalDataset(Seq2SeqDataset):
 
 
 
-class Preprocess4Seq2seq(Pipeline):
+class Preprocess4Seq2cls(Pipeline):
     """ Pre-processing steps for pretraining transformer """
 
     def __init__(self, max_pred, mask_prob, vocab_words, indexer, max_len=512, skipgram_prb=0, skipgram_size=0, block_mask=False, mask_whole_word=False, new_segment_ids=False, truncate_config={}, mask_source_words=False, mode="s2s", has_oracle=False, num_qkv=0, s2s_special_token=False, s2s_add_segment=False, s2s_share_segment=False, pos_shift=False, eval=False):
