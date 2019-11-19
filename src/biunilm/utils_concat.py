@@ -28,6 +28,9 @@ def batch_list_to_batch_tensors(batch):
     print("bacth label raw")
     print(batch[0][-1])
     for x in zip(*batch):
+        print("check the x ")
+        print(torch.tensor(x).shape)
+        print(x)
         if x[0] is None:
             batch_tensors.append(None)
         elif isinstance(x[0], torch.Tensor):
