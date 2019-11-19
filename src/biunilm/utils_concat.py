@@ -25,7 +25,8 @@ def batch_list_to_batch_tensors(batch):
     # print("bacth")
     # print(len(batch))  # == 8
     # print(len(batch[0]))# == 10
-
+    print("bacth label raw")
+    print(batch[0][-1])
     for x in zip(*batch):
         if x[0] is None:
             batch_tensors.append(None)
