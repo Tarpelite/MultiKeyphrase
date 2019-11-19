@@ -547,7 +547,10 @@ class ScoreRougeDataset(Seq2SeqDataset):
                 results = list(tqdm(p.imap(self.solve, instances), total=len(instances)))
             for res in results:
                 if len(res) > 0:
-                    self.ex_list.extend(res)        
+                    self.ex_list.extend(res)     
+
+            with open("cached_rank_dataset.pl", "wb") as f:
+                pickle.dump(self.ex_list, f)   
                     
     def get_score(self, sent, keywords):
         scores = 0
