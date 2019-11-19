@@ -2,6 +2,7 @@ import json
 import sys
 import copy
 import nltk
+import torch
 
 
 from seq2seq_loader import *
@@ -18,6 +19,20 @@ from random import randint, shuffle, choice
 from random import random as rand
 from rouge_score import rouge_scorer
 from multiprocessing import cpu_count, Pool
+
+def batch_list_to_batch_tensors(batch):
+    batch_tensors = []
+    for x in zip(*batch):
+        if x[0] is None:
+            batch_tensors.append(None)
+        elif isinstance(x[0], torch.Tensor):
+            batch_tensors.append(torch.stack(x))
+        else:
+            if isinstance(x, float):
+                batch_tensors.append(torch.tensor(x, dtype=torch.float))
+            else:
+                batch_tensors.append(torch.tensor(x, dtype=torch.long))
+    return batch_tensors
 
 class InputExample(object):
     """

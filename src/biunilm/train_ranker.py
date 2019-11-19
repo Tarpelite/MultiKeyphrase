@@ -24,7 +24,7 @@ from pytorch_pretrained_bert.optimization import BertAdam, warmup_linear
 
 from nn.data_parallel import DataParallelImbalance
 import biunilm.seq2seq_loader as seq2seq_loader
-from utils_concat import ConcatDataset, TitleDataset, TitleLead1Dataset, SingleTrainingDataset, ScoreDataset, Preprocess4Seq2cls, ScoreRougeDataset
+from utils_concat import ConcatDataset, TitleDataset, TitleLead1Dataset, SingleTrainingDataset, ScoreDataset, Preprocess4Seq2cls, ScoreRougeDataset, batch_list_to_batch_tensors
 import torch.distributed as dist
 
 
@@ -295,7 +295,7 @@ def main():
             train_sampler = DistributedSampler(train_dataset)
             _batch_size = args.train_batch_size // dist.get_world_size()
         train_dataloader = torch.utils.data.DataLoader(train_dataset, batch_size=_batch_size, sampler=train_sampler,
-                                                       num_workers=args.num_workers, collate_fn=seq2seq_loader.batch_list_to_batch_tensors, pin_memory=False)
+                                                       num_workers=args.num_workers, collate_fn=batch_list_to_batch_tensors, pin_memory=False)
 
     # note: args.train_batch_size has been changed to (/= args.gradient_accumulation_steps)
     # t_total = int(math.ceil(len(train_dataset.ex_list) / args.train_batch_size)
@@ -417,7 +417,7 @@ def main():
 
         model.train()
         if recover_step:
-            start_epoch = recover_step+1
+            start_epoch = recover_step + 1
         else:
             start_epoch = 1
         for i_epoch in trange(start_epoch, int(args.num_train_epochs)+1, desc="Epoch", disable=args.local_rank not in (-1, 0)):
