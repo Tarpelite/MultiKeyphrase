@@ -787,7 +787,10 @@ class Preprocess4Seq2cls(Pipeline):
     def __call__(self, instance):
         # print("instance len")
         # print(len(instance))
-        tokens_a, tokens_b,label = instance
+        if not self.eval:
+            tokens_a, tokens_b,label = instance
+        else:
+            tokens_a, tokens_b = instance
 
         if self.pos_shift:
             tokens_b = ['[S2S_SOS]'] + tokens_b
