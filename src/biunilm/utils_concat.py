@@ -460,7 +460,24 @@ class EvalDataset(object):
                             map_dict[clu_cnt].append(glo_cnt)
                         glo_cnt += 1
                     clu_cnt += 1
-            return input_lines, map_dict       
+            return input_lines, map_dict   
+
+        elif self.experiment == "segsep":
+
+            with open(self.input_file) as fin:
+                input_lines = []
+                for line in tqdm(fin.readlines()):
+                    line = line.strip().split("\t")
+                    docs = [json.loads(doc) for doc in line]
+                    titles = [doc["title"] for doc in docs]
+                    abstracts = [doc["abstract"] for doc in docs]
+                    
+                    src_seq = ""
+                    for title, abstract in zip(titles, abstracts):
+                        src_seq += title + ": " + abstract + "[SEP]"
+                    
+                    src_seq = src_seq[:-6]
+                    input_lines.append(src_seq)
         return input_lines
     
 

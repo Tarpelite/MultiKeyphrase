@@ -188,12 +188,8 @@ def main():
     
     if args.experiment == "segsep":
         bi_uni_pipeline = []
-        bi_uni_pipeline.append()
-
-
-
-
-
+        bi_uni_pipeline.append(Preprocess4SegSepDecoder(list(
+            tokenizer.vocab.keys()), tokenizer.convert_tokens_to_ids, args.max_seq_length, max_tgt_length=args.max_tgt_length, new_segment_ids=args.new_segment_ids, mode="s2s")))
 
     amp_handle = None
     if args.fp16 and args.amp:
@@ -242,7 +238,7 @@ def main():
             elif args.experiment == "title-first":
                 input_lines = EvalDataset(args.input_file, args.experiment, tokenizer, args.max_seq_length, args.max_seq_length).proc()
             elif args.experiment == "segsep":
-                pass
+                input_lines = EvalDataset(args.input_file, args.experiment).proc()
             elif args.experiment == "heirachical":
                 logger.info("***** Recover rank model: %s *****", args.ranker_recover_path)
                 # extract sentences before load data
