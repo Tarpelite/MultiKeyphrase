@@ -685,7 +685,70 @@ class ScoreEvalDataset(Seq2SeqDataset):
     def get_maps(self):
         return self.clu2doc_dict, self.doc2sent_dict, self.all_titles, self.all_sents
 
+class EvalRankDataset(Seq2SeqDataset):
+    def __init__(self, file_src, file_tgt, batch_size, tokenizer, max_len, short_sampling_prob=0.1, sent_reverse_order=False, bi_uni_pipeline=[]):
+        # super().__init__(file_src, file_tgt, batch_size, tokenizer, max_len)
+        self.tokenizer = tokenizer
+        self.max_len = max_len
+        self.short_sampling_prob = short_sampling_prob
+        self.bi_uni_pipeline = bi_uni_pipeline
+        self.batch_size = batch_size
+        self.sent_reverse_order = sent_reverse_order
+        self.cached = False
+        self.stemmer = PorterStemmer()
+        self.ex_list = []
+        self.clu2sent_dict = {}
+        self.all_sents = []
+        self.all_titles = []
 
+        if os.path.exists("eval_cached_dataset.pl"):
+            self.cached = True
+        
+        if self.cached:
+            with open("eval_cached_dataset.pl", "rb") as f:
+                self.ex_list, self.clu2doc_dict, self.doc2sent_dict, self.all_titles, self.all_sents = pickle.load(f)
+        else:
+            
+            clu_cnt = 0
+            sent_cnt = 0
+            with open(file_src, "r", encoding="utf-8") as f_src:
+                for src in tqdm(f_src.readlines()):
+                    docs = [json.loads(x) for x in src.strip().strip("\n").split("\t")]
+                    titles = [x["title"]  for x in docs]
+                    abstracts = [x["title"] + ". " + x["abstract"] for x in docs]
+
+                    title_seq = " ".join(tiles)
+                    sents = []
+                    for piece in abstracts:
+                        piece_sents = sent_tokenize(piece)
+                        sents.extend(piece_sents)
+                    self.all_titles.append(title_seq)
+                    for sent in sents:
+                        src_tk = tokenizer.tokenize(title_seq)
+                        tgt_tk = tokenizer.tokenize(sent)
+                        if len(src_tk) > 0 and len(tgt_tk) > 0:
+                            self.ex_list.append((src_tk, tgt_tk))
+                            if clu_cnt not in self.clu2sent_dict:
+                                self.clu2sent_dict[clu_cnt] = [sent_cnt]
+                            else:
+                                self.clu2sent_dict[clu_cnt].append(sent_cnt)
+                            sent_cnt += 1
+                            self.all_sents.append(sent)
+                    
+                    clu_cnt += 1
+                    
+            with open("eval_cached_dataset.pl", "wb") as f:
+                pickle.dump([self.ex_list, self.all_sents], f)
+
+        
+        print('Load {0} documents'.format(len(self.ex_list)))
+        # caculate statistics
+        src_tk_lens = [len(x[0]) for x in self.ex_list]
+        tgt_tk_lens = [len(x[1]) for x in self.ex_list]
+        print("Statistics:\nsrc_tokens: max:{0}  min:{1}  avg:{2}\ntgt_tokens: max:{3} min:{4} avg:{5}".format(max(src_tk_lens), min(src_tk_lens), sum(src_tk_lens)/len(self.ex_list), max(tgt_tk_lens), min(tgt_tk_lens), sum(tgt_tk_lens)/len(tgt_tk_lens)))
+
+    def get_maps(self):
+        return self.clu2sent_dict, self.all_sents, self.all_titles
 
 class Preprocess4Seq2cls(Pipeline):
     """ Pre-processing steps for pretraining transformer """
