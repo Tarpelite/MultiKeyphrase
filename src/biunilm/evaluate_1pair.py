@@ -399,7 +399,7 @@ def main():
 
                     text_tk = tokenizer.tokenize(text)
                     j = 0
-                    while j < len(sent_collect) and len(text_tk) + len(tokenizer.tokenize(sent_collect[j])) <= args.max_seq_length:
+                    while j < len(sent_collect) and len(text_tk) + len(tokenizer.tokenize(sents_collect[j])) <= args.max_seq_length:
                         text += " " + sent_collect[j]
                         j += 1
                     
