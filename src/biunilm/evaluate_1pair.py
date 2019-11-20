@@ -28,7 +28,7 @@ from nn.data_parallel import DataParallelImbalance
 
 import biunilm.seq2seq_loader as seq2seq_loader
 from loader_utils import batch_list_to_batch_tensors
-from utils_concat import EvalDataset, ScoreEvalDataset, Preprocess4Seq2cls, Preprocess4SegSepDecoder
+from utils_concat import EvalDataset, ScoreEvalDataset, Preprocess4Seq2cls, Preprocess4SegSepDecoder, EvalRankDataset
 
 from nltk.stem import PorterStemmer
 from nltk import word_tokenize, sent_tokenize

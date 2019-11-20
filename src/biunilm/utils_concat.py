@@ -474,7 +474,7 @@ class EvalDataset(object):
                     
                     src_seq = ""
                     for title, abstract in zip(titles, abstracts):
-                        src_seq += title + ": " + abstract + "[SEP]"
+                        src_seq += title + ": " + abstract + " [SEP] "
                     
                     src_seq = src_seq[:-6]
                     input_lines.append(src_seq)
@@ -1015,7 +1015,7 @@ class SegSepDataset(Seq2SeqDataset):
 
                     src_seq = ""
                     for title, abstract in zip(titles, abstracts):
-                        src_seq += title + ": " + abstract + "[SEP]"
+                        src_seq += title + ": " + abstract + " [SEP] "
                     
                     src_seq = src_seq[:-1]
 
@@ -1342,10 +1342,10 @@ class Preprocess4SegSepDecoder(Pipeline):
                 new_segment_ids.append(3)
             i += 1
         
-        if reverse:
-            new_segment_ids.append(4)
-        else:
-            new_segment_ids.append(3)
+        # if reverse:
+        #     new_segment_ids.append(4)
+        # else:
+        #     new_segment_ids.append(3)
         
         new_segment_ids += [5] *(max_len_in_batch - len(padded_tokens_a))
 
