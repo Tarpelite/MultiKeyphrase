@@ -1107,25 +1107,18 @@ class Preprocess4SegSep(Preprocess4Seq2seq):
         # renew segment ids for every doc
         # id 5 for tokens_b and id num 6+ for doc_cnt
 
-        reverse = True
+        doc_cnt = 0
 
-        new_segment_ids = [4]
+        new_segment_ids = [0]
         i = 0
         while i < len(tokens_a):
             if tokens[i] == '[SEP]':
-                reverse = not reverse
-            if reverse:
-                new_segment_ids.append(4)
-            else:
-                new_segment_ids.append(3)
+                doc_cnt += 1
+            new_segment_ids.append(doc_cnt)
             i += 1
         
-        if reverse:
-            new_segment_ids.append(4)
-        else:
-            new_segment_ids.append(3)
-
-        new_segment_ids += [5] * (len(tokens_b)+1)
+        new_segment_ids.append(doc_cnt)
+        new_segment_ids += [10] * (len(tokens_b)+1)
         
         assert len(new_segment_ids) == len(segment_ids)
 
@@ -1332,22 +1325,15 @@ class Preprocess4SegSepDecoder(Pipeline):
         reverse = True
 
         new_segment_ids = []
+        doc_cnt = 0
         i = 0
         while i < len(padded_tokens_a):
             if padded_tokens_a[i] == '[SEP]':
-                reverse = not reverse
-            if reverse:
-                new_segment_ids.append(4)
-            else:
-                new_segment_ids.append(3)
+                doc_cnt += 1
+             new_segment_ids.append(doc_cnt)
             i += 1
         
-        # if reverse:
-        #     new_segment_ids.append(4)
-        # else:
-        #     new_segment_ids.append(3)
-        
-        new_segment_ids += [5] *(max_len_in_batch - len(padded_tokens_a))
+        new_segment_ids += [11] *(max_len_in_batch - len(padded_tokens_a))
         assert len(new_segment_ids) == len(segment_ids)
         segment_ids = new_segment_ids
 
