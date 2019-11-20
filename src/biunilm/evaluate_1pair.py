@@ -387,6 +387,7 @@ def main():
                 logger.info("**** Collect results ******")
                 clu2sent_dict, all_sents, all_titles= eval_dataset.get_maps()
                 all_clusters = []
+                input_lines = []
                 for i, clu_id in enumerate(clu2sent_dict):
                     text = all_titles[clu_id]
                     sent_idx = clu2sent_dict[clu_id]
