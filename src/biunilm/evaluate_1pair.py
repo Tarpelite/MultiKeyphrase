@@ -370,6 +370,7 @@ def main():
                 for step, batch in enumerate(iter_bar):
                     batch = [t.to(device) if t is not None else None for t in batch]
                     input_ids, segment_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next, task_idx = batch
+                    print("input_ids", len(input_ids), "segment_ids", len(segment_ids))
                     logits = rank_model(input_ids, task_idx=task_idx, mask_qkv=mask_qkv)
                     labels = logits.view(-1)
                     all_labels.append(labels)
