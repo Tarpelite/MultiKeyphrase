@@ -189,7 +189,7 @@ def main():
     if args.experiment == "segsep":
         bi_uni_pipeline = []
         bi_uni_pipeline.append(Preprocess4SegSepDecoder(list(
-            tokenizer.vocab.keys()), tokenizer.convert_tokens_to_ids, args.max_seq_length, max_tgt_length=args.max_tgt_length, new_segment_ids=args.new_segment_ids, mode="s2s")))
+            tokenizer.vocab.keys()), tokenizer.convert_tokens_to_ids, args.max_seq_length, max_tgt_length=args.max_tgt_length, new_segment_ids=args.new_segment_ids, mode="s2s"))
 
     amp_handle = None
     if args.fp16 and args.amp:
