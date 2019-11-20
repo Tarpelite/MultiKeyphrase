@@ -1331,7 +1331,7 @@ class Preprocess4SegSepDecoder(Pipeline):
         
         reverse = True
 
-        new_segment_ids = [4]
+        new_segment_ids = []
         i = 0
         while i < len(padded_tokens_a):
             if padded_tokens_a[i] == '[SEP]':
@@ -1348,11 +1348,7 @@ class Preprocess4SegSepDecoder(Pipeline):
         #     new_segment_ids.append(3)
         
         new_segment_ids += [5] *(max_len_in_batch - len(padded_tokens_a))
-        try:
-            assert len(new_segment_ids) == len(segment_ids)
-        except Exception as e:
-            print("new_segment_ids", len(new_segment_ids))
-            print("segment_ids", len(segment_ids))
+        assert len(new_segment_ids) == len(segment_ids)
         segment_ids = new_segment_ids
 
         if self.num_qkv > 1:
