@@ -1322,8 +1322,6 @@ class Preprocess4SegSepDecoder(Pipeline):
             segment_ids = [0]*(len(padded_tokens_a)) \
                 + [1]*(max_len_in_batch - len(padded_tokens_a))
         
-        reverse = True
-
         new_segment_ids = []
         doc_cnt = 0
         i = 0
