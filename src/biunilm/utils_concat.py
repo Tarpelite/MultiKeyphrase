@@ -723,7 +723,7 @@ class EvalRankDataset(Seq2SeqDataset):
         
         if self.cached:
             with open("eval_cached_dataset.pl", "rb") as f:
-                self.ex_list, self.clu2doc_dict, self.doc2sent_dict, self.all_titles, self.all_sents = pickle.load(f)
+                self.ex_list, self.all_sents, self.all_titles, self.clu2sent_dict = pickle.load(f)
         else:
             
             clu_cnt = 0
@@ -755,7 +755,7 @@ class EvalRankDataset(Seq2SeqDataset):
                     clu_cnt += 1
                     
             with open("eval_cached_dataset.pl", "wb") as f:
-                pickle.dump([self.ex_list, self.all_sents], f)
+                pickle.dump([self.ex_list, self.all_sents, self.all_titles, self.clu2sent_dict], f)
 
         
         print('Load {0} documents'.format(len(self.ex_list)))
