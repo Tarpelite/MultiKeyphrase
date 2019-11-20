@@ -1328,7 +1328,7 @@ class Preprocess4SegSepDecoder(Pipeline):
         while i < len(padded_tokens_a):
             if padded_tokens_a[i] == '[SEP]':
                 doc_cnt += 1
-             new_segment_ids.append(doc_cnt)
+            new_segment_ids.append(doc_cnt)
             i += 1
         
         new_segment_ids += [11] *(max_len_in_batch - len(padded_tokens_a))
