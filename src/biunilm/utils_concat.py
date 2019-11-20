@@ -1348,8 +1348,11 @@ class Preprocess4SegSepDecoder(Pipeline):
         #     new_segment_ids.append(3)
         
         new_segment_ids += [5] *(max_len_in_batch - len(padded_tokens_a))
-
-        assert len(new_segment_ids) == len(segment_ids)
+        try:
+            assert len(new_segment_ids) == len(segment_ids)
+        except Exception as e:
+            print("new_segment_ids", len(new_segment_ids))
+            print("segment_ids", len(segment_ids))
         segment_ids = new_segment_ids
 
         if self.num_qkv > 1:
