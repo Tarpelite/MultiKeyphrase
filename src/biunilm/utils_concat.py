@@ -386,7 +386,7 @@ class SingleTrainingDataset(Seq2SeqDataset):
         print("Statistics:\nsrc_tokens: max:{0}  min:{1}  avg:{2}\ntgt_tokens: max:{3} min:{4} avg:{5}".format(max(src_tk_lens), min(src_tk_lens), sum(src_tk_lens)/len(self.ex_list), max(tgt_tk_lens), min(tgt_tk_lens), sum(tgt_tk_lens)/len(tgt_tk_lens)))
 
 class EvalDataset(object):
-    def __init__(self,input_file, experiment, tokenizer=None, max_seq_length=None, max_tgt_length=None):
+    def __init__(self,input_file, experiment, tokenizer=None, max_seq_length=512, max_tgt_length=16):
         self.input_file = input_file
         self.experiment = experiment
         self.tokenizer = tokenizer
