@@ -185,6 +185,15 @@ def main():
     if args.mode == "l2r" or args.mode == "both":
         bi_uni_pipeline.append(seq2seq_loader.Preprocess4Seq2seqDecoder(list(
             tokenizer.vocab.keys()), tokenizer.convert_tokens_to_ids, args.max_seq_length, max_tgt_length=args.max_tgt_length, new_segment_ids=args.new_segment_ids, mode="l2r"))
+    
+    if args.experiment == "segsep":
+        bi_uni_pipeline = []
+        bi_uni_pipeline.append()
+
+
+
+
+
 
     amp_handle = None
     if args.fp16 and args.amp:
@@ -232,7 +241,8 @@ def main():
                 input_lines, map_dict = EvalDataset(args.input_file, args.experiment).proc()
             elif args.experiment == "title-first":
                 input_lines = EvalDataset(args.input_file, args.experiment, tokenizer, args.max_seq_length, args.max_seq_length).proc()
-
+            elif args.experiment == "segsep":
+                pass
             elif args.experiment == "heirachical":
                 logger.info("***** Recover rank model: %s *****", args.ranker_recover_path)
                 # extract sentences before load data
@@ -365,7 +375,7 @@ def main():
                     batch = [t.to(device) if t is not None else None for t in batch]
                     input_ids, segment_ids, input_mask, mask_qkv, lm_label_ids, masked_pos, masked_weights, is_next, task_idx = batch
                     logits = rank_model(input_ids, task_idx=task_idx, mask_qkv=mask_qkv)
-                    labels = torch.argmax(logits.view(-1, num_rank_labels), dim=-1)
+                    labels = logits.view(-1)
                     all_labels.append(labels)
                 
                 all_labels_results = []

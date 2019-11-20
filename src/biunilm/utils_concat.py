@@ -1256,3 +1256,115 @@ class Preprocess4SegSep(Preprocess4Seq2seq):
 
         return (input_ids, segment_ids, input_mask, mask_qkv, masked_ids, masked_pos, masked_weights, -1, self.task_idx)
             
+
+class Preprocess4SegSepDecoder(Pipeline):
+    def __init__(self, vocab_words, indexer, max_len=512, max_tgt_length=128, new_segment_ids=False, mode="s2s", num_qkv=0, s2s_special_token=False, s2s_add_segment=False, s2s_share_segment=False, pos_shift=False):
+        super().__init__()
+        self.max_len = max_len
+        self.vocab_words = vocab_words  # vocabulary (sub)words
+        self.indexer = indexer  # function from token to token index
+        self.max_len = max_len
+        self._tril_matrix = torch.tril(torch.ones(
+            (max_len, max_len), dtype=torch.long))
+        self.new_segment_ids = new_segment_ids
+        self.task_idx = 3   # relax projection layer for different tasks
+        assert mode in ("s2s", "l2r")
+        self.mode = mode
+        self.max_tgt_length = max_tgt_length
+        self.num_qkv = num_qkv
+        self.s2s_special_token = s2s_special_token
+        self.s2s_add_segment = s2s_add_segment
+        self.s2s_share_segment = s2s_share_segment
+        self.pos_shift = pos_shift
+
+    def __call__(self, instance):
+        tokens_a, max_a_len = instance
+
+        # Add Special Tokens
+        if self.s2s_special_token:
+            padded_tokens_a = ['[S2S_CLS]'] + tokens_a + ['[S2S_SEP]']
+        else:
+            padded_tokens_a = ['[CLS]'] + tokens_a + ['[SEP]']
+        assert len(padded_tokens_a) <= max_a_len + 2
+        if max_a_len + 2 > len(padded_tokens_a):
+            padded_tokens_a += ['[PAD]'] * \
+                (max_a_len + 2 - len(padded_tokens_a))
+        assert len(padded_tokens_a) == max_a_len + 2
+        max_len_in_batch = min(self.max_tgt_length +
+                               max_a_len + 2, self.max_len)
+        tokens = padded_tokens_a
+        if self.new_segment_ids:
+            if self.mode == "s2s":
+                _enc_seg1 = 0 if self.s2s_share_segment else 4
+                if self.s2s_add_segment:
+                    if self.s2s_share_segment:
+                        segment_ids = [
+                            0] + [1]*(len(padded_tokens_a)-1) + [5]*(max_len_in_batch - len(padded_tokens_a))
+                    else:
+                        segment_ids = [
+                            4] + [6]*(len(padded_tokens_a)-1) + [5]*(max_len_in_batch - len(padded_tokens_a))
+                else:
+                    segment_ids = [4]*(len(padded_tokens_a)) + \
+                        [5]*(max_len_in_batch - len(padded_tokens_a))
+            else:
+                segment_ids = [2]*max_len_in_batch
+        else:
+            segment_ids = [0]*(len(padded_tokens_a)) \
+                + [1]*(max_len_in_batch - len(padded_tokens_a))
+        
+        reverse = True
+
+        new_segment_ids = [4]
+        i = 0
+        while i < len(padded_tokens_a):
+            if padded_tokens_a[i] == '[SEP]':
+                reverse = not reverse
+            if reverse:
+                new_segment_ids.append(4)
+            else:
+                new_segment_ids.append(3)
+            i += 1
+        
+        if reverse:
+            new_segment_ids.append(4)
+        else:
+            new_segment_ids.append(3)
+        
+        new_segment_ids += [5] *(max_len_in_batch - len(padded_tokens_a))
+
+        assert len(new_segment_ids) == len(segment_ids)
+        segment_ids = new_segment_ids
+
+        if self.num_qkv > 1:
+            mask_qkv = [0]*(len(padded_tokens_a)) + [1] * \
+                (max_len_in_batch - len(padded_tokens_a))
+        else:
+            mask_qkv = None
+
+        position_ids = []
+        for i in range(len(tokens_a) + 2):
+            position_ids.append(i)
+        for i in range(len(tokens_a) + 2, max_a_len + 2):
+            position_ids.append(0)
+        for i in range(max_a_len + 2, max_len_in_batch):
+            position_ids.append(i - (max_a_len + 2) + len(tokens_a) + 2)
+
+        # Token Indexing
+        input_ids = self.indexer(tokens)
+
+        # Zero Padding
+        input_mask = torch.zeros(
+            max_len_in_batch, max_len_in_batch, dtype=torch.long)
+        if self.mode == "s2s":
+            input_mask[:, :len(tokens_a)+2].fill_(1)
+        else:
+            st, end = 0, len(tokens_a) + 2
+            input_mask[st:end, st:end].copy_(
+                self._tril_matrix[:end, :end])
+            input_mask[end:, :len(tokens_a)+2].fill_(1)
+        second_st, second_end = len(padded_tokens_a), max_len_in_batch
+
+        input_mask[second_st:second_end, second_st:second_end].copy_(
+            self._tril_matrix[:second_end-second_st, :second_end-second_st])
+
+        return (input_ids, segment_ids, position_ids, input_mask, mask_qkv, self.task_idx)
