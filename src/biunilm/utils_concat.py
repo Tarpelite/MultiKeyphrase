@@ -734,7 +734,7 @@ class EvalRankDataset(Seq2SeqDataset):
                     titles = [x["title"]  for x in docs]
                     abstracts = [x["title"] + ". " + x["abstract"] for x in docs]
 
-                    title_seq = " ".join(tiles)
+                    title_seq = " ".join(titles)
                     sents = []
                     for piece in abstracts:
                         piece_sents = sent_tokenize(piece)
