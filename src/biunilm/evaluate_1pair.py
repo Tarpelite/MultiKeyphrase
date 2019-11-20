@@ -238,7 +238,7 @@ def main():
             elif args.experiment == "title-first":
                 input_lines = EvalDataset(args.input_file, args.experiment, tokenizer, args.max_seq_length, args.max_seq_length).proc()
             elif args.experiment == "segsep":
-                input_lines = EvalDataset(args.input_file, args.experiment).proc()
+                input_lines = EvalDataset(args.input_file, args.experiment, tokenizer, args.max_seq_length, args.max_seq_length).proc()
             elif args.experiment == "heirachical":
                 logger.info("***** Recover rank model: %s *****", args.ranker_recover_path)
                 # extract sentences before load data
