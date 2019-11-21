@@ -201,7 +201,7 @@ def main():
     cls_num_labels = 2
     type_vocab_size = 6 if args.new_segment_ids else 2
     if args.experiment == "segsep":
-        type_vocab_size = 12
+        type_vocab_size = 11
     mask_word_id, eos_word_ids = tokenizer.convert_tokens_to_ids(
         ["[MASK]", "[SEP]"])
     forbid_ignore_set = None
