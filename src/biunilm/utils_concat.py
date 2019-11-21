@@ -1331,7 +1331,7 @@ class Preprocess4SegSepDecoder(Pipeline):
             new_segment_ids.append(doc_cnt)
             i += 1
         
-        new_segment_ids += [11] *(max_len_in_batch - len(padded_tokens_a))
+        new_segment_ids += [10] *(max_len_in_batch - len(padded_tokens_a))
         assert len(new_segment_ids) == len(segment_ids)
         segment_ids = new_segment_ids
 
